@@ -12,6 +12,9 @@ import $3dTiles_Provider from './Providers/3dTiles_Provider';
 import TMS_Provider from './Providers/TMS_Provider';
 import PointCloudProvider from './Providers/PointCloudProvider';
 import WFS_Provider from './Providers/WFS_Provider';
+import Raster_Provider from './Providers/Raster_Provider';
+import StaticProvider from './Providers/StaticProvider';
+import CancelledCommandException from './CancelledCommandException';
 
 var instanceScheduler = null;
 
@@ -55,6 +58,10 @@ function _instanciateQueue() {
                 this.counters.executing--;
                 cmd.reject(err);
                 this.counters.failed++;
+                if (__DEBUG__ && this.counters.failed < 3) {
+                    // eslint-disable-next-line no-console
+                    console.error(err);
+                }
             });
         },
     };
@@ -91,8 +98,9 @@ Scheduler.prototype.initDefaultProviders = function initDefaultProviders() {
     this.addProtocolProvider('tms', new TMS_Provider());
     this.addProtocolProvider('potreeconverter', PointCloudProvider);
     this.addProtocolProvider('wfs', new WFS_Provider());
+    this.addProtocolProvider('rasterizer', Raster_Provider);
+    this.addProtocolProvider('static', StaticProvider);
 };
-
 
 Scheduler.prototype.runCommand = function runCommand(command, queue, executingCounterUpToDate) {
     var provider = this.providers[command.layer.protocol];
@@ -121,8 +129,7 @@ Scheduler.prototype.execute = function execute(command) {
 
     // parse host
     const layer = command.layer;
-
-    const host = layer.url ? new URL(layer.url).host : undefined;
+    const host = layer.url ? new URL(layer.url, document.location).host : undefined;
 
     command.promise = new Promise((resolve, reject) => {
         command.resolve = resolve;
@@ -196,19 +203,6 @@ Scheduler.prototype.getProviders = function getProviders() {
     return this.providers.slice();
 };
 
-/**
- * Custom error thrown when cancelling commands. Allows the caller to act differently if needed.
- * @constructor
- * @param {Command} command
- */
-function CancelledCommandException(command) {
-    this.command = command;
-}
-
-CancelledCommandException.prototype.toString = function toString() {
-    return `Cancelled command ${this.command.requester.id}/${this.command.layer.id}`;
-};
-
 Scheduler.prototype.deQueue = function deQueue(queue) {
     var st = queue.storage;
     while (st.length > 0) {
@@ -225,5 +219,4 @@ Scheduler.prototype.deQueue = function deQueue(queue) {
     return undefined;
 };
 
-export { CancelledCommandException };
 export default Scheduler;

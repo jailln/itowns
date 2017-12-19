@@ -1,9 +1,12 @@
-import { l_ELEVATION, l_COLOR, EMPTY_TEXTURE_ZOOM } from '../Renderer/LayeredMaterial';
+import { l_ELEVATION, l_COLOR, EMPTY_TEXTURE_ZOOM } from '../Renderer/LayeredMaterialConstants';
 import { chooseNextLevelToFetch } from '../Core/Layer/LayerUpdateStrategy';
 import LayerUpdateState from '../Core/Layer/LayerUpdateState';
 import { ImageryLayers } from '../Core/Layer/Layer';
-import { CancelledCommandException } from '../Core/Scheduler/Scheduler';
+import CancelledCommandException from '../Core/Scheduler/CancelledCommandException';
 import OGCWebServiceHelper, { SIZE_TEXTURE_TILE } from '../Core/Scheduler/Providers/OGCWebServiceHelper';
+
+// max retry loading before changing the status to definitiveError
+const MAX_RETRY = 4;
 
 function initNodeImageryTexturesFromParent(node, parent, layer) {
     if (parent.material && parent.material.getColorLayerLevelById(layer.id) > EMPTY_TEXTURE_ZOOM) {
@@ -37,8 +40,11 @@ function initNodeImageryTexturesFromParent(node, parent, layer) {
 }
 
 function initNodeElevationTextureFromParent(node, parent, layer) {
-    // inherit parent's elevation texture
-    if (parent.material && parent.material.getElevationLayerLevel() > EMPTY_TEXTURE_ZOOM) {
+    // Inherit parent's elevation texture. Note that contrary to color layers the elevation level of the
+    // node might not be EMPTY_TEXTURE_ZOOM in this init function. That's because we can have
+    // multiple elevation layers (thus multiple calls to initNodeElevationTextureFromParent) but a given
+    // node can only use 1 elevation texture
+    if (parent.material && parent.material.getElevationLayerLevel() > node.material.getElevationLayerLevel()) {
         const coords = node.getCoordsForLayer(layer);
 
         const texture = parent.material.textures[l_ELEVATION][0];
@@ -72,7 +78,7 @@ function getIndiceWithPitch(i, pitch, w) {
     const currentX = (i % w) / w;  // normalized
     const currentY = Math.floor(i / w) / w; // normalized
     const newX = pitch.x + currentX * pitch.z;
-    const newY = pitch.y + currentY * pitch.z;
+    const newY = pitch.y + currentY * pitch.w;
     const newIndice = Math.floor(newY * w) * w + Math.floor(newX * w);
     return newIndice;
 }
@@ -114,6 +120,14 @@ function refinementCommandCancellationFn(cmd) {
         return false;
     }
 
+    // Cancel the command if the tile already has a better texture.
+    // This is only needed for elevation layers, because we may have several
+    // concurrent layers but we can only use one texture.
+    if (cmd.layer.type == 'elevation' &&
+        cmd.targetLevel <= cmd.requester.material.getElevationLayerLevel()) {
+        return true;
+    }
+
     return !cmd.requester.isDisplayed();
 }
 
@@ -131,76 +145,93 @@ export function updateLayeredMaterialNodeImagery(context, layer, node) {
     if (!node.parent) {
         return;
     }
-    if (!layer.tileInsideLimit(node, layer)) {
-        // we also need to check that tile's parent doesn't have a texture for this layer,
-        // because even if this tile is outside of the layer, it could inherit it's
-        // parent texture
-        if (node.parent &&
-            node.parent.material &&
-            node.parent.getIndexLayerColor &&
-            node.parent.getIndexLayerColor(layer.id) >= 0) {
-            // ok, we're going to inherint our parent's texture
-        } else {
-            return Promise.resolve();
-        }
-    }
 
     const material = node.material;
 
-    if (material.indexOfColorLayer(layer.id) === -1) {
-        const texturesCount = layer.tileTextureCount ?
-            layer.tileTextureCount(node, layer) : 1;
+    // Initialisation
+    if (node.layerUpdateState[layer.id] === undefined) {
+        node.layerUpdateState[layer.id] = new LayerUpdateState();
 
-        const paramMaterial = {
-            tileMT: layer.options.tileMatrixSet,
-            texturesCount,
-            visible: layer.visible,
-            opacity: layer.opacity,
-            fx: layer.fx,
-            idLayer: layer.id,
-        };
+        if (!layer.tileInsideLimit(node, layer)) {
+            // we also need to check that tile's parent doesn't have a texture for this layer,
+            // because even if this tile is outside of the layer, it could inherit it's
+            // parent texture
+            if (!layer.noTextureParentOutsideLimit &&
+                node.parent &&
+                node.parent.material &&
+                node.parent.getIndexLayerColor &&
+                node.parent.getIndexLayerColor(layer.id) >= 0) {
+                // ok, we're going to inherit our parent's texture
+            } else {
+                node.layerUpdateState[layer.id].noMoreUpdatePossible();
+                return;
+            }
+        }
 
-        material.pushLayer(paramMaterial);
-        const imageryLayers = context.view.getLayers(l => l.type === 'color');
-        const sequence = ImageryLayers.getColorLayersIdOrderedBySequence(imageryLayers);
-        material.setSequence(sequence);
+        if (material.indexOfColorLayer(layer.id) === -1) {
+            const texturesCount = layer.tileTextureCount ?
+                layer.tileTextureCount(node, layer) : 1;
 
-        initNodeImageryTexturesFromParent(node, node.parent, layer);
+            const paramMaterial = {
+                tileMT: layer.options.tileMatrixSet || node.getCoordsForLayer(layer)[0].crs(),
+                texturesCount,
+                visible: layer.visible,
+                opacity: layer.opacity,
+                fx: layer.fx,
+                idLayer: layer.id,
+            };
+
+            material.pushLayer(paramMaterial);
+            const imageryLayers = context.view.getLayers(l => l.type === 'color');
+            const sequence = ImageryLayers.getColorLayersIdOrderedBySequence(imageryLayers);
+            material.setSequence(sequence);
+
+            initNodeImageryTexturesFromParent(node, node.parent, layer);
+        }
     }
 
-    if (!node.isDisplayed() || !layer.tileInsideLimit(node, layer)) {
-        return Promise.resolve();
+    // Node is hidden, no need to update it
+    if (!node.isDisplayed()) {
+        return;
     }
 
-    // upate params
+    // TODO: move this to defineLayerProperty() declaration
+    // to avoid mixing layer's network updates and layer's params
+    // Update material parameters
     const layerIndex = material.indexOfColorLayer(layer.id);
     material.setLayerVisibility(layerIndex, layer.visible);
     material.setLayerOpacity(layerIndex, layer.opacity);
 
+    // An update is pending / or impossible -> abort
+    if (!layer.visible || !node.layerUpdateState[layer.id].canTryUpdate(ts)) {
+        return;
+    }
+
+
     const ts = Date.now();
-
-    if (node.layerUpdateState[layer.id] === undefined) {
-        node.layerUpdateState[layer.id] = new LayerUpdateState();
-    }
-
-    if (!node.layerUpdateState[layer.id].canTryUpdate(ts)) {
-        return Promise.resolve();
-    }
-
     // does this tile needs a new texture?
-    if (!node.isColorLayerDownscaled(layer)) {
-        return Promise.resolve();
+    if (layer.canTileTextureBeImproved) {
+        // if the layer has a custom method -> use it
+        if (!layer.canTileTextureBeImproved(layer, node)) {
+            node.layerUpdateState[layer.id].noMoreUpdatePossible();
+            return;
+        }
+    } else if (!node.isColorLayerDownscaled(layer)) {
+        // default decision method
+        node.layerUpdateState[layer.id].noMoreUpdatePossible();
+        return;
     }
+
     // is fetching data from this layer disabled?
-    if (!layer.visible || layer.frozen) {
-        return Promise.resolve();
+    if (layer.frozen) {
+        return;
     }
 
     const currentLevel = node.material.getColorLayerLevelById(layer.id);
     const zoom = node.getCoordsForLayer(layer)[0].zoom || node.level;
     const targetLevel = chooseNextLevelToFetch(layer.updateStrategy.type, node, zoom, currentLevel, layer);
     if (targetLevel <= currentLevel) {
-        return Promise.resolve();
+        return;
     }
 
     node.layerUpdateState[layer.id].newTry();
@@ -242,10 +273,13 @@ export function updateLayeredMaterialNodeImagery(context, layer, node) {
                     // eslint-disable-next-line no-console
                     console.warn(`Imagery texture update error for ${node}: ${err}`);
                 }
-                node.layerUpdateState[layer.id].failure(Date.now());
-                window.setTimeout(() => {
-                    context.view.notifyChange(false, node);
-                }, node.layerUpdateState[layer.id].secondsUntilNextTry() * 1000);
+                const definitiveError = node.layerUpdateState[layer.id].errorCount > MAX_RETRY;
+                node.layerUpdateState[layer.id].failure(Date.now(), definitiveError);
+                if (!definitiveError) {
+                    window.setTimeout(() => {
+                        context.view.notifyChange(false, node);
+                    }, node.layerUpdateState[layer.id].secondsUntilNextTry() * 1000);
+                }
             }
         });
 }
@@ -280,6 +314,16 @@ export function updateLayeredMaterialNodeElevation(context, layer, node, force) 
         initNodeElevationTextureFromParent(node, node.parent, layer);
         currentElevation = material.getElevationLayerLevel();
     }
+
+    // does this tile needs a new texture?
+    if (layer.canTileTextureBeImproved) {
+        // if the layer has a custom method -> use it
+        if (!layer.canTileTextureBeImproved(layer, node)) {
+            node.layerUpdateState[layer.id].noMoreUpdatePossible();
+            return Promise.resolve();
+        }
+    }
+
     if (!node.isDisplayed()) {
         return Promise.resolve();
     }
@@ -319,6 +363,14 @@ export function updateLayeredMaterialNodeElevation(context, layer, node, force) 
                 return;
             }
 
+            // Do not apply the new texture if its level is < than the current one.
+            // This is only needed for elevation layers, because we may have several
+            // concurrent layers but we can only use one texture.
+            if (targetLevel <= node.material.getElevationLayerLevel()) {
+                node.layerUpdateState[layer.id].noMoreUpdatePossible();
+                return;
+            }
+
             node.layerUpdateState[layer.id].success();
 
             if (terrain.texture && terrain.texture.flipY) {
@@ -346,10 +398,13 @@ export function updateLayeredMaterialNodeElevation(context, layer, node, force) 
                     // eslint-disable-next-line no-console
                     console.warn(`Elevation texture update error for ${node}: ${err}`);
                 }
-                node.layerUpdateState[layer.id].failure(Date.now());
-                window.setTimeout(() => {
-                    context.view.notifyChange(false, node);
-                }, node.layerUpdateState[layer.id].secondsUntilNextTry() * 1000);
+                const definitiveError = node.layerUpdateState[layer.id].errorCount > MAX_RETRY;
+                node.layerUpdateState[layer.id].failure(Date.now(), definitiveError);
+                if (!definitiveError) {
+                    window.setTimeout(() => {
+                        context.view.notifyChange(false, node);
+                    }, node.layerUpdateState[layer.id].secondsUntilNextTry() * 1000);
+                }
             }
         });
 }

@@ -16,7 +16,7 @@
 import Provider from './Provider';
 import TileGeometry from '../../TileGeometry';
 import TileMesh from '../../TileMesh';
-import { CancelledCommandException } from '../Scheduler';
+import CancelledCommandException from '../CancelledCommandException';
 import { requestNewTile } from '../../../Process/TiledNodeProcessing';
 
 function TileProvider() {
@@ -62,9 +62,10 @@ TileProvider.prototype.executeCommand = function executeCommand(command) {
 
     // build tile
     var params = {
+        layerId: command.layer.id,
         extent,
         level: (command.level === undefined) ? (parent.level + 1) : command.level,
-        segment: 16,
+        segment: command.layer.segments || 16,
         materialOptions: command.layer.materialOptions,
         disableSkirt: command.layer.disableSkirt,
     };
@@ -81,6 +82,8 @@ TileProvider.prototype.executeCommand = function executeCommand(command) {
     }
 
     tile.position.copy(params.center);
+    tile.material.transparent = command.layer.opacity < 1.0;
+    tile.material.uniforms.opacity.value = command.layer.opacity;
     tile.setVisibility(false);
     tile.updateMatrix();
     if (parent) {

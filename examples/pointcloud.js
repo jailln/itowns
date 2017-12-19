@@ -18,14 +18,14 @@ function showPointcloud(serverUrl, fileName, lopocsTable) {
         '+proj=lcc +lat_1=45.25 +lat_2=46.75 +lat_0=46 +lon_0=3 +x_0=1700000 ' +
         '+y_0=5200000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
 
-    debugGui = new dat.GUI();
+    debugGui = new dat.GUI({ width: 400 });
 
     // TODO: do we really need to disable logarithmicDepthBuffer ?
     view = new itowns.View('EPSG:3946', viewerDiv, { renderer: { logarithmicDepthBuffer: true } });
     view.mainLoop.gfxEngine.renderer.setClearColor(0xcccccc);
 
     // Configure Point Cloud layer
-    pointcloud = new itowns.GeometryLayer('pointcloud', view.scene);
+    pointcloud = new itowns.GeometryLayer('pointcloud', new itowns.THREE.Group());
     pointcloud.file = fileName || 'infos/sources';
     pointcloud.protocol = 'potreeconverter';
     pointcloud.url = serverUrl;
@@ -53,7 +53,7 @@ function showPointcloud(serverUrl, fileName, lopocsTable) {
         view.camera.camera3D.lookAt(lookAt);
         // create controls
         controls = new itowns.FirstPersonControls(view, { focusOnClick: true });
-        debugGui.add(controls, 'moveSpeed', 1, 100).name('Movement speed');
+        debugGui.add(controls.options, 'moveSpeed', 1, 100).name('Movement speed');
 
         view.notifyChange(true);
     }

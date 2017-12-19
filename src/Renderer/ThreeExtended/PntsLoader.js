@@ -1,8 +1,8 @@
 import * as THREE from 'three';
+import BT from './BatchTable';
 
-const textDecoder = new TextDecoder('utf-8');
 export default {
-    parse: function parse(buffer) {
+    parse: function parse(buffer, textDecoder) {
         if (!buffer) {
             throw new Error('No array buffer provided.');
         }
@@ -10,6 +10,8 @@ export default {
 
         let byteOffset = 0;
         const pntsHeader = {};
+        let batchTable = {};
+        let point = {};
 
         // Magic type is unsigned char [4]
         pntsHeader.magic = textDecoder.decode(new Uint8Array(buffer, byteOffset, 4));
@@ -37,20 +39,26 @@ export default {
 
             // binary table
             if (pntsHeader.FTBinaryLength > 0) {
-                return parseFeatureBinary(buffer, byteOffset, pntsHeader.FTJSONLength);
+                point = parseFeatureBinary(buffer, byteOffset, pntsHeader.FTJSONLength, textDecoder);
             }
 
             // batch table
-            if (pntsHeader.BTBinaryLength > 0) {
-                throw new Error('For pnts loader, BTBinaryLength: not yet managed');
+            if (pntsHeader.BTJSONLength > 0) {
+                const sizeBegin = 28 + pntsHeader.FTJSONLength + pntsHeader.FTBinaryLength;
+                batchTable = BT.parse(
+                    buffer.slice(sizeBegin, pntsHeader.BTJSONLength + sizeBegin),
+                    textDecoder);
             }
+
+            const pnts = { point, batchTable };
+            return pnts;
         } else {
             throw new Error('Invalid pnts file.');
         }
     },
 };
 
-function parseFeatureBinary(array, byteOffset, FTJSONLength) {
+function parseFeatureBinary(array, byteOffset, FTJSONLength, textDecoder) {
     // Init geometry
     const geometry = new THREE.BufferGeometry();
     const material = new THREE.PointsMaterial({ size: 0.05, vertexColors: THREE.VertexColors, sizeAttenuation: true });

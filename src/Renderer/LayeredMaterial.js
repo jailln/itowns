@@ -11,19 +11,14 @@ import TileFS from './Shader/TileFS.glsl';
 import pitUV from './Shader/Chunk/pitUV.glsl';
 import PrecisionQualifier from './Shader/Chunk/PrecisionQualifier.glsl';
 import Capabilities from '../Core/System/Capabilities';
-
-export const EMPTY_TEXTURE_ZOOM = -1;
+import { l_COLOR, l_ELEVATION, EMPTY_TEXTURE_ZOOM } from './LayeredMaterialConstants';
 
 var emptyTexture = new THREE.Texture();
 emptyTexture.coords = { zoom: EMPTY_TEXTURE_ZOOM };
 
 const layerTypesCount = 2;
-var vector = new THREE.Vector3(0.0, 0.0, 0.0);
 var vector4 = new THREE.Vector4(0.0, 0.0, 0.0, 0.0);
 var fooTexture;
-
-export const l_ELEVATION = 0;
-export const l_COLOR = 1;
 
 // from three.js packDepthToRGBA
 const UnpackDownscale = 255 / 256; // 0..1 -> fraction (excluding 1)
@@ -33,12 +28,12 @@ export function unpack1K(color, factor) {
         UnpackDownscale / (256.0 * 256.0),
         UnpackDownscale / 256.0,
         UnpackDownscale);
-    return bitSh.dot(color) * factor;
+    return factor ? bitSh.dot(color) * factor : bitSh.dot(color);
 }
 
 var getColorAtIdUv = function getColorAtIdUv(nbTex) {
     if (!fooTexture) {
-        fooTexture = 'vec4 colorAtIdUv(sampler2D dTextures[TEX_UNITS],vec3 offsetScale[TEX_UNITS],int id, vec2 uv){\n';
+        fooTexture = 'vec4 colorAtIdUv(sampler2D dTextures[TEX_UNITS],vec4 offsetScale[TEX_UNITS],int id, vec2 uv){\n';
         fooTexture += ' if (id == 0) return texture2D(dTextures[0],  pitUV(uv,offsetScale[0]));\n';
 
         for (var l = 1; l < nbTex; l++) {
@@ -122,8 +117,8 @@ const LayeredMaterial = function LayeredMaterial(options) {
     // Uniform three js needs no empty array
     // WARNING TODO: prevent empty slot, but it's not the solution
     this.offsetScale[l_COLOR] = Array(nbSamplers);
-    this.offsetScale[l_ELEVATION] = [vector];
-    fillArray(this.offsetScale[l_COLOR], vector);
+    this.offsetScale[l_ELEVATION] = [vector4];
+    fillArray(this.offsetScale[l_COLOR], vector4);
 
     this.textures[l_ELEVATION] = [emptyTexture];
     this.textures[l_COLOR] = Array(nbSamplers);
@@ -171,6 +166,8 @@ const LayeredMaterial = function LayeredMaterial(options) {
     this.uniforms.lightingEnabled = new THREE.Uniform(false);
 
     this.uniforms.noTextureColor = new THREE.Uniform(new THREE.Color(0.04, 0.23, 0.35));
+
+    this.uniforms.opacity = new THREE.Uniform(1.0);
 
     this.colorLayersId = [];
     this.elevationLayersId = [];
@@ -319,7 +316,7 @@ LayeredMaterial.prototype.removeColorLayer = function removeColorLayer(layer) {
     // refill remove textures
     for (let i = 0, max = texturesCount; i < max; i++) {
         this.textures[l_COLOR].push(emptyTexture);
-        this.offsetScale[l_COLOR].push(vector);
+        this.offsetScale[l_COLOR].push(vector4);
     }
 
     // Update slot start texture layer
@@ -355,7 +352,7 @@ LayeredMaterial.prototype.setTexture = function setTexture(texture, layerType, s
 
     // BEWARE: array [] -> size: 0; array [10]="wao" -> size: 11
     this.textures[layerType][slot] = texture || emptyTexture;
-    this.offsetScale[layerType][slot] = offsetScale || new THREE.Vector3(0.0, 0.0, 1.0);
+    this.offsetScale[layerType][slot] = offsetScale || new THREE.Vector4(0.0, 0.0, 1.0, 1.0);
 };
 
 LayeredMaterial.prototype.setColorLayerParameters = function setColorLayerParameters(params) {
@@ -373,7 +370,7 @@ LayeredMaterial.prototype.pushLayer = function pushLayer(param) {
     this.uniforms.paramLayers.value[newIndex] = new THREE.Vector4();
 
     this.setTextureOffsetByLayerIndex(newIndex, offset);
-    this.setLayerUV(newIndex, param.tileMT === 'PM' ? 1 : 0);
+    this.setLayerUV(newIndex, param.tileMT.includes('PM') ? param.texturesCount : 0);
     this.setLayerFx(newIndex, param.fx);
     this.setLayerOpacity(newIndex, param.opacity);
     this.setLayerVisibility(newIndex, param.visible);

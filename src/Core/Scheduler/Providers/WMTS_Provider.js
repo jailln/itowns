@@ -20,24 +20,24 @@ WMTS_Provider.prototype.customUrl = function customUrl(layer, url, tilematrix, r
 
 WMTS_Provider.prototype.preprocessDataLayer = function preprocessDataLayer(layer) {
     layer.fx = layer.fx || 0.0;
-    if (layer.protocol === 'wmtsc') {
-        layer.options.zoom = {
-            min: 2,
-            max: 20,
-        };
-    } else {
+
+    layer.options = layer.options || {};
+
+    if (layer.protocol === 'wmts') {
         const options = layer.options;
         options.version = options.version || '1.0.0';
         options.tileMatrixSet = options.tileMatrixSet || 'WGS84';
         options.mimetype = options.mimetype || 'image/png';
         options.style = options.style || 'normal';
         options.projection = options.projection || 'EPSG:3857';
-        let newBaseUrl = `${layer.url
-            }?LAYER=${options.name
-            }&FORMAT=${options.mimetype
-            }&SERVICE=WMTS` +
-            '&VERSION=1.0.0' +
-            `&REQUEST=GetTile&STYLE=normal&TILEMATRIXSET=${options.tileMatrixSet}`;
+        let newBaseUrl = `${layer.url}` +
+            `?LAYER=${options.name}` +
+            `&FORMAT=${options.mimetype}` +
+            '&SERVICE=WMTS' +
+            `&VERSION=${options.version}` +
+            '&REQUEST=GetTile' +
+            `&STYLE=${options.style}` +
+            `&TILEMATRIXSET=${options.tileMatrixSet}`;
 
         newBaseUrl += '&TILEMATRIX=%TILEMATRIX&TILEROW=%ROW&TILECOL=%COL';
 
@@ -54,6 +54,7 @@ WMTS_Provider.prototype.preprocessDataLayer = function preprocessDataLayer(layer
         }
         layer.customUrl = newBaseUrl;
     }
+    layer.options.zoom = layer.options.zoom || { min: 2, max: 20 };
 };
 
 /**
@@ -74,7 +75,7 @@ WMTS_Provider.prototype.url = function url(coWMTS, layer) {
  * @returns {Promise<portableXBIL>}
  */
 WMTS_Provider.prototype.getXbilTexture = function getXbilTexture(tile, layer, targetZoom) {
-    const pitch = new THREE.Vector3(0.0, 0.0, 1.0);
+    const pitch = new THREE.Vector4(0.0, 0.0, 1.0, 1.0);
     let coordWMTS = tile.getCoordsForLayer(layer)[0];
 
     if (targetZoom && targetZoom !== coordWMTS.zoom) {
@@ -113,7 +114,7 @@ WMTS_Provider.prototype.getColorTexture = function getColorTexture(coordWMTS, la
         const result = {};
         result.texture = texture;
         result.texture.coords = coordWMTS;
-        result.pitch = new THREE.Vector3(0, 0, 1);
+        result.pitch = new THREE.Vector4(0, 0, 1, 1);
 
         return result;
     });
@@ -149,16 +150,15 @@ WMTS_Provider.prototype.tileInsideLimit = function tileInsideLimit(tile, layer, 
     // (the zoom.max property is used when building the url to make
     //  sure we don't use invalid levels)
     for (const coord of tile.getCoordsForLayer(layer)) {
+        let c = coord;
+        // override
+        if (targetLevel < c.zoom) {
+            c = OGCWebServiceHelper.WMTS_WGS84Parent(coord, targetLevel);
+        }
+        if (c.zoom < layer.options.zoom.min || c.zoom > layer.options.zoom.max) {
+            return false;
+        }
         if (layer.options.tileMatrixSetLimits) {
-            let c = coord;
-            // override
-            if (targetLevel < c.zoom) {
-                c = OGCWebServiceHelper.WMTS_WGS84Parent(coord, targetLevel);
-            }
-
-            if (!(c.zoom in layer.options.tileMatrixSetLimits)) {
-                return false;
-            }
             if (c.row < layer.options.tileMatrixSetLimits[c.zoom].minTileRow ||
                 c.row > layer.options.tileMatrixSetLimits[c.zoom].maxTileRow ||
                 c.col < layer.options.tileMatrixSetLimits[c.zoom].minTileCol ||

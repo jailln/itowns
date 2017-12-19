@@ -1,7 +1,5 @@
 import * as THREE from 'three';
-
-const maxFOV = 90;
-const rotationFactor = 0.0022; // determined empirically
+import { MAIN_LOOP_EVENTS } from '../../Core/MainLoop';
 
 const MOVEMENTS = {
     38: { method: 'translateZ', sign: -1 }, // FORWARD: up key
@@ -33,9 +31,12 @@ function onTouchStart(event) {
 
 function onPointerMove(pointerX, pointerY) {
     if (this._isMouseDown === true) {
-        const fovCorrection = this._camera3D.fov / maxFOV; // 1 at maxFOV
-        this._camera3D.rotateY((pointerX - this._onMouseDownMouseX) * rotationFactor * fovCorrection);
-        this._camera3D.rotateX((pointerY - this._onMouseDownMouseY) * rotationFactor * fovCorrection);
+        // in rigor we have tan(theta) = tan(cameraFOV) * deltaH / H
+        // (where deltaH is the vertical amount we moved, and H the renderer height)
+        // we loosely approximate tan(x) by x
+        const pxToAngleRatio = THREE.Math.degToRad(this._camera3D.fov) / this.view.mainLoop.gfxEngine.height;
+        this._camera3D.rotateY((pointerX - this._onMouseDownMouseX) * pxToAngleRatio);
+        this._camera3D.rotateX((pointerY - this._onMouseDownMouseY) * pxToAngleRatio);
         this._onMouseDownMouseX = pointerX;
         this._onMouseDownMouseY = pointerY;
         this.view.notifyChange(false, this._camera3D);
@@ -124,7 +125,7 @@ class FlyControls extends THREE.EventDispatcher {
         domElement.addEventListener('keyup', onKeyUp.bind(this), true);
         domElement.addEventListener('keydown', onKeyDown.bind(this), true);
 
-        this.view.addFrameRequester(this);
+        this.view.addFrameRequester(MAIN_LOOP_EVENTS.AFTER_CAMERA_UPDATE, this.update.bind(this));
 
         // focus policy
         if (options.focusOnMouseOver) {

@@ -1,12 +1,13 @@
 import * as THREE from 'three';
-import './GLTFLoader';
+import GLTFLoader from './GLTFLoader';
+import BatchTable from './BatchTable';
 
 const matrixChangeUpVectorZtoY = (new THREE.Matrix4()).makeRotationX(Math.PI / 2);
 // For gltf rotation
 const matrixChangeUpVectorZtoX = (new THREE.Matrix4()).makeRotationZ(-Math.PI / 2);
 
 function B3dmLoader() {
-    this.glTFLoader = new THREE.GLTFLoader();
+    this.glTFLoader = new GLTFLoader();
 }
 
 function filterUnsupportedSemantics(obj) {
@@ -32,7 +33,7 @@ function filterUnsupportedSemantics(obj) {
     }
 }
 // parse for RTC values
-function applyOptionalCesiumRTC(data, gltf) {
+function applyOptionalCesiumRTC(data, gltf, textDecoder) {
     const headerView = new DataView(data, 0, 20);
     const contentArray = new Uint8Array(data, 20, headerView.getUint32(12, true));
     const content = textDecoder.decode(new Uint8Array(contentArray));
@@ -43,8 +44,7 @@ function applyOptionalCesiumRTC(data, gltf) {
     }
 }
 
-const textDecoder = new TextDecoder('utf-8');
-B3dmLoader.prototype.parse = function parse(buffer, gltfUpAxis) {
+B3dmLoader.prototype.parse = function parse(buffer, gltfUpAxis, textDecoder) {
     if (!buffer) {
         throw new Error('No array buffer provided.');
     }
@@ -53,6 +53,7 @@ B3dmLoader.prototype.parse = function parse(buffer, gltfUpAxis) {
 
     let byteOffset = 0;
     const b3dmHeader = {};
+    let batchTable = {};
 
     // Magic type is unsigned char [4]
     b3dmHeader.magic = textDecoder.decode(new Uint8Array(buffer, 0, 4));
@@ -76,6 +77,12 @@ B3dmLoader.prototype.parse = function parse(buffer, gltfUpAxis) {
         b3dmHeader.BTBinaryLength = view.getUint32(byteOffset, true);
         byteOffset += Uint32Array.BYTES_PER_ELEMENT;
 
+        if (b3dmHeader.BTJSONLength > 0) {
+            const sizeBegin = 28 + b3dmHeader.FTJSONLength + b3dmHeader.FTBinaryLength;
+            batchTable = BatchTable.parse(
+                buffer.slice(sizeBegin, b3dmHeader.BTJSONLength + sizeBegin),
+                textDecoder);
+        }
         // TODO: missing feature and batch table
         return new Promise((resolve/* , reject */) => {
             const onload = (gltf) => {
@@ -92,8 +99,10 @@ B3dmLoader.prototype.parse = function parse(buffer, gltfUpAxis) {
                 // RTC managed
                 applyOptionalCesiumRTC(buffer.slice(28 + b3dmHeader.FTJSONLength +
                     b3dmHeader.FTBinaryLength + b3dmHeader.BTJSONLength +
-                    b3dmHeader.BTBinaryLength), gltf.scene);
-                resolve(gltf);
+                    b3dmHeader.BTBinaryLength), gltf.scene, textDecoder);
+
+                const b3dm = { gltf, batchTable };
+                resolve(b3dm);
             };
             this.glTFLoader.parse(buffer.slice(28 + b3dmHeader.FTJSONLength +
                 b3dmHeader.FTBinaryLength + b3dmHeader.BTJSONLength +

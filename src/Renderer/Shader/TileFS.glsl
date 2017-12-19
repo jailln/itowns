@@ -13,7 +13,7 @@ const vec4 CRed = vec4( 1.0, 0.0, 0.0, 1.0);
 
 
 uniform sampler2D   dTextures_01[TEX_UNITS];
-uniform vec3        offsetScale_L01[TEX_UNITS];
+uniform vec4        offsetScale_L01[TEX_UNITS];
 
 // offset texture | Projection | fx | Opacity
 uniform vec4        paramLayers[8];
@@ -34,6 +34,8 @@ varying vec2        vUv_WGS84;
 varying float       vUv_PM;
 varying vec3        vNormal;
 
+uniform float opacity;
+
 #if defined(DEBUG)
     uniform bool showOutline;
     const float sLine = 0.008;
@@ -51,11 +53,11 @@ void main() {
         gl_FragColor = packDepthToRGBA(float(uuid) / (256.0 * 256.0 * 256.0));
     #elif defined(DEPTH_MODE)
         #if defined(USE_LOGDEPTHBUF) && defined(USE_LOGDEPTHBUF_EXT)
-            float z = 1.0/ gl_FragCoord.w ;
+            float z = gl_FragDepthEXT ;
         #else
-            float z = gl_FragCoord.z / gl_FragCoord.w;
+            float z = gl_FragCoord.z;
         #endif
-        gl_FragColor = packDepthToRGBA(z / 100000000.0);
+        gl_FragColor = packDepthToRGBA(z);
     #else
 
 
@@ -74,10 +76,11 @@ void main() {
 
         #if defined(USE_LOGDEPTHBUF) && defined(USE_LOGDEPTHBUF_EXT)
             float depth = gl_FragDepthEXT / gl_FragCoord.w;
-            float fogIntensity = 1.0/(exp(depth/distanceFog));
         #else
-            float fogIntensity = 1.0;
+            float depth = gl_FragCoord.z / gl_FragCoord.w;
         #endif
+
+        float fogIntensity = 1.0/(exp(depth/distanceFog));
 
         vec4 diffuseColor = CWhite;
         bool validTexture = false;
@@ -93,7 +96,19 @@ void main() {
 
                 if(paramsA.w > 0.0) {
                     bool projWGS84 = paramsA.y == 0.0;
+                    int pmTextureCount = int(paramsA.y);
                     int textureIndex = int(paramsA.x) + (projWGS84 ? 0 : pmSubTextureIndex);
+
+                    if (!projWGS84 && pmTextureCount <= pmSubTextureIndex) {
+                        continue;
+                    }
+
+                    #if defined(DEBUG)
+                    if (showOutline && !projWGS84 && (uvPM.x < sLine || uvPM.x > 1.0 - sLine || uvPM.y < sLine || uvPM.y > 1.0 - sLine)) {
+                        gl_FragColor = COrange;
+                        return;
+                    }
+                    #endif
 
                     /* if (0 <= textureIndex && textureIndex < loadedTexturesCount[1]) */ {
 
@@ -147,5 +162,6 @@ void main() {
             gl_FragColor.rgb *= light;
         }
     }
+    gl_FragColor.a = opacity;
     #endif
 }

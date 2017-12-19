@@ -5,7 +5,8 @@
  */
 
 import * as THREE from 'three';
-import LayeredMaterial, { l_ELEVATION } from '../Renderer/LayeredMaterial';
+import LayeredMaterial from '../Renderer/LayeredMaterial';
+import { l_ELEVATION } from '../Renderer/LayeredMaterialConstants';
 import RendererConstant from '../Renderer/RendererConstant';
 import OGCWebServiceHelper, { SIZE_TEXTURE_TILE } from './Scheduler/Providers/OGCWebServiceHelper';
 
@@ -97,7 +98,7 @@ TileMesh.prototype.setTextureElevation = function setTextureElevation(elevation)
         return;
     }
 
-    const offsetScale = elevation.pitch || new THREE.Vector3(0, 0, 1);
+    const offsetScale = elevation.pitch || new THREE.Vector4(0, 0, 1, 1);
     this.setBBoxZ(elevation.min, elevation.max);
 
     this.material.setTexture(elevation.texture, l_ELEVATION, 0, offsetScale);
@@ -177,6 +178,9 @@ TileMesh.prototype.getIndexLayerColor = function getIndexLayerColor(idLayer) {
 };
 
 TileMesh.prototype.removeColorLayer = function removeColorLayer(idLayer) {
+    if (this.layerUpdateState && this.layerUpdateState[idLayer]) {
+        delete this.layerUpdateState[idLayer];
+    }
     this.material.removeColorLayer(idLayer);
 };
 
@@ -195,6 +199,14 @@ TileMesh.prototype.getCoordsForLayer = function getCoordsForLayer(layer) {
     if (layer.protocol.indexOf('wmts') == 0) {
         OGCWebServiceHelper.computeTileMatrixSetCoordinates(this, layer.options.tileMatrixSet);
         return this.wmtsCoords[layer.options.tileMatrixSet];
+    } else if (layer.protocol == 'wms' && this.extent.crs() != layer.projection) {
+        if (layer.projection == 'EPSG:3857') {
+            const tilematrixset = 'PM';
+            OGCWebServiceHelper.computeTileMatrixSetCoordinates(this, tilematrixset);
+            return this.wmtsCoords[tilematrixset];
+        } else {
+            throw new Error('unsupported projection wms for this viewer');
+        }
     } else if (layer.protocol == 'tms') {
         return OGCWebServiceHelper.computeTMSCoordinates(this, layer.extent);
     } else {
@@ -202,7 +214,7 @@ TileMesh.prototype.getCoordsForLayer = function getCoordsForLayer(layer) {
     }
 };
 
-TileMesh.prototype.getZoomForLayer = function getCoordsForLayer(layer) {
+TileMesh.prototype.getZoomForLayer = function getZoomForLayer(layer) {
     if (layer.protocol.indexOf('wmts') == 0) {
         OGCWebServiceHelper.computeTileMatrixSetCoordinates(this, layer.options.tileMatrixSet);
         return this.wmtsCoords[layer.options.tileMatrixSet][0].zoom;

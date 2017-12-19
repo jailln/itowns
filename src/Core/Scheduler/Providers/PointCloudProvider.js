@@ -135,11 +135,23 @@ export default {
         if (!layer.file) {
             layer.file = 'cloud.js';
         }
+        if (!layer.group) {
+            layer.group = new THREE.Group();
+            layer.object3d.add(layer.group);
+            layer.group.updateMatrixWorld();
+        }
+
+        if (!layer.bboxes) {
+            layer.bboxes = new THREE.Group();
+            layer.object3d.add(layer.bboxes);
+            layer.bboxes.updateMatrixWorld();
+        }
+
         // default options
         layer.fetchOptions = layer.fetchOptions || {};
         layer.octreeDepthLimit = layer.octreeDepthLimit || -1;
         layer.pointBudget = layer.pointBudget || 15000000;
-        layer.pointSize = layer.pointSize || 4;
+        layer.pointSize = layer.pointSize === 0 || !isNaN(layer.pointSize) ? layer.pointSize : 4;
         layer.overdraw = layer.overdraw || 2;
         layer.type = 'geometry';
 
@@ -223,9 +235,11 @@ export default {
             points.tightbbox.max.y *= layer.metadata.scale;
             points.tightbbox.max.z *= layer.metadata.scale;
             points.tightbbox.translate(node.bbox.min);
+            points.material.transparent = layer.opacity < 1.0;
+            points.material.uniforms.opacity.value = layer.opacity;
             points.updateMatrix();
-            points.updateMatrixWorld(true);
             points.layers.set(layer.threejsLayer);
+            points.layer = layer.id;
             return points;
         });
     },

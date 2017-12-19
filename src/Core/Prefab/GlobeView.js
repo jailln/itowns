@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 import View from '../View';
+import { RENDERING_PAUSED, MAIN_LOOP_EVENTS } from '../MainLoop';
 import { COLOR_LAYERS_ORDER_CHANGED } from '../../Renderer/ColorLayersOrdering';
 import RendererConstant from '../../Renderer/RendererConstant';
 import GlobeControls from '../../Renderer/ThreeExtended/GlobeControls';
@@ -106,11 +107,11 @@ export function createGlobeLayer(id, options) {
         }
     }
 
-    const wgs84TileLayer = new GeometryLayer(id, options.object3d);
+    const wgs84TileLayer = new GeometryLayer(id, options.object3d || new THREE.Group());
     wgs84TileLayer.schemeTile = globeSchemeTileWMTS(globeSchemeTile1);
     wgs84TileLayer.extent = wgs84TileLayer.schemeTile[0].clone();
     for (let i = 1; i < wgs84TileLayer.schemeTile.length; i++) {
-        wgs84TileLayer.extent.merge(wgs84TileLayer.schemeTile[i]);
+        wgs84TileLayer.extent.union(wgs84TileLayer.schemeTile[i]);
     }
     wgs84TileLayer.preUpdate = (context, layer, changeSources) => {
         SubdivisionControl.preUpdate(context, layer);
@@ -193,8 +194,6 @@ function GlobeView(viewerDiv, coordCarto, options = {}) {
     // Setup View
     View.call(this, 'EPSG:4978', viewerDiv, options);
 
-    options.object3d = options.object3d || this.scene;
-
     // Configure camera
     const positionCamera = new C.EPSG_4326(
         coordCarto.longitude,
@@ -236,16 +235,30 @@ function GlobeView(viewerDiv, coordCarto, options = {}) {
         this.camera.camera3D.lookAt(positionTargetCamera.as('EPSG:4978').xyz());
     } else {
         this.controls = new GlobeControls(this, positionTargetCamera.as('EPSG:4978').xyz(), size);
+        this.controls.handleCollision = typeof (options.handleCollision) !== 'undefined' ? options.handleCollision : true;
     }
 
+    const mfogDistance = size * 160.0;
     this._renderState = RendererConstant.FINAL;
+    this._fullSizeDepthBuffer = null;
+
     const renderer = this.mainLoop.gfxEngine.renderer;
-    this.preRender = () => {
+
+    this.addFrameRequester(MAIN_LOOP_EVENTS.BEFORE_RENDER, () => {
+        if (this._fullSizeDepthBuffer != null) {
+            // clean depth buffer
+            this._fullSizeDepthBuffer = null;
+        }
         const v = new THREE.Vector3();
         v.setFromMatrixPosition(wgs84TileLayer.object3d.matrixWorld);
         var len = v.distanceTo(this.camera.camera3D.position);
         v.setFromMatrixScale(wgs84TileLayer.object3d.matrixWorld);
         var lim = v.x * size * 1.1;
+
+        // TODO: may be move in camera update
+        // Compute fog distance, this function makes it possible to have a shorter distance
+        // when the camera approaches the ground
+        this.fogDistance = mfogDistance * Math.pow((len - size * 0.99) * 0.25 / size, 1.5);
 
         if (len < lim) {
             var t = Math.pow(Math.cos((lim - len) / (lim - v.x * size * 0.9981) * Math.PI * 0.5), 1.5);
@@ -254,7 +267,7 @@ function GlobeView(viewerDiv, coordCarto, options = {}) {
         } else if (len >= lim) {
             renderer.setClearColor(0x030508, renderer.getClearAlpha());
         }
-    };
+    });
 
     this.wgs84TileLayer = wgs84TileLayer;
 
@@ -276,6 +289,9 @@ GlobeView.prototype.addLayer = function addLayer(layer) {
         const colorLayerCount = this.getLayers(l => l.type === 'color').length;
         layer.sequence = colorLayerCount;
         layer.update = updateLayeredMaterialNodeImagery;
+        if (layer.protocol === 'rasterizer') {
+            layer.reprojection = 'EPSG:4326';
+        }
     } else if (layer.type == 'elevation') {
         if (layer.protocol === 'wmts' && layer.options.tileMatrixSet !== 'WGS84G') {
             throw new Error('Only WGS84G tileMatrixSet is currently supported for WMTS elevation layers');
@@ -332,6 +348,7 @@ GlobeView.prototype.removeLayer = function removeImageryLayer(layerId) {
 };
 
 GlobeView.prototype.selectNodeAt = function selectNodeAt(mouse) {
+    // update the picking ray with the camera and mouse position
     const selectedId = this.screenCoordsToNodeId(mouse);
 
     for (const n of this.wgs84TileLayer.level0Nodes) {
@@ -380,31 +397,43 @@ GlobeView.prototype.screenCoordsToNodeId = function screenCoordsToNodeId(mouse) 
     return Math.round(unpack);
 };
 
+GlobeView.prototype.readDepthBuffer = function readDepthBuffer(x, y, width, height) {
+    const g = this.mainLoop.gfxEngine;
+    const previousRenderState = this._renderState;
+    this.changeRenderState(RendererConstant.DEPTH);
+    const buffer = g.renderViewTobuffer(this, g.fullSizeRenderTarget, x, y, width, height);
+    this.changeRenderState(previousRenderState);
+    return buffer;
+};
+
 const matrix = new THREE.Matrix4();
 const screen = new THREE.Vector2();
 const pickWorldPosition = new THREE.Vector3();
 const ray = new THREE.Ray();
 const direction = new THREE.Vector3();
-const depthRGBA = new THREE.Vector4();
 GlobeView.prototype.getPickingPositionFromDepth = function getPickingPositionFromDepth(mouse) {
-    const dim = this.mainLoop.gfxEngine.getWindowSize();
+    const l = this.mainLoop;
+    const viewPaused = l.scheduler.commandsWaitingExecutionCount() == 0 && l.renderingState == RENDERING_PAUSED;
+    const g = l.gfxEngine;
+    const dim = g.getWindowSize();
+    const camera = this.camera.camera3D;
+
     mouse = mouse || dim.clone().multiplyScalar(0.5);
+    mouse.x = Math.floor(mouse.x);
+    mouse.y = Math.floor(mouse.y);
 
-    var camera = this.camera.camera3D;
+    const prev = camera.layers.mask;
+    camera.layers.mask = 1 << this.wgs84TileLayer.threejsLayer;
 
-    // Prepare state
-    const prev = this.camera.camera3D.layers.mask;
-    this.camera.camera3D.layers.mask = 1 << this.wgs84TileLayer.threejsLayer;
-
-    const previousRenderState = this._renderState;
-    this.changeRenderState(RendererConstant.DEPTH);
-
-    // Render to buffer
-    var buffer = this.mainLoop.gfxEngine.renderViewTobuffer(
-        this,
-        this.mainLoop.gfxEngine.fullSizeRenderTarget,
-        mouse.x, dim.y - mouse.y,
-        1, 1);
+    // Render/Read to buffer
+    let buffer;
+    if (viewPaused) {
+        this._fullSizeDepthBuffer = this._fullSizeDepthBuffer || this.readDepthBuffer(0, 0, dim.x, dim.y);
+        const id = ((dim.y - mouse.y - 1) * dim.x + mouse.x) * 4;
+        buffer = this._fullSizeDepthBuffer.slice(id, id + 4);
+    } else {
+        buffer = this.readDepthBuffer(mouse.x, dim.y - mouse.y - 1, 1, 1);
+    }
 
     screen.x = (mouse.x / dim.x) * 2 - 1;
     screen.y = -(mouse.y / dim.y) * 2 + 1;
@@ -423,16 +452,12 @@ GlobeView.prototype.getPickingPositionFromDepth = function getPickingPositionFro
     direction.applyMatrix4(matrix);
     direction.sub(ray.origin);
 
-    var angle = direction.angleTo(ray.direction);
+    const angle = direction.angleTo(ray.direction);
+    const orthoZ = g.depthBufferRGBAValueToOrthoZ(buffer, camera);
+    const length = orthoZ / Math.cos(angle);
 
-    depthRGBA.fromArray(buffer).divideScalar(255.0);
+    pickWorldPosition.addVectors(camera.position, ray.direction.setLength(length));
 
-    var depth = unpack1K(depthRGBA, 100000000.0) / Math.cos(angle);
-
-    pickWorldPosition.addVectors(camera.position, ray.direction.setLength(depth));
-
-    // Restore initial state
-    this.changeRenderState(previousRenderState);
     camera.layers.mask = prev;
 
     if (pickWorldPosition.length() > 10000000)

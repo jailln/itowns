@@ -3,6 +3,7 @@ const UPDATE_STATE = {
     PENDING: 1,
     ERROR: 2,
     DEFINITIVE_ERROR: 3,
+    FINISHED: 4,
 };
 const PAUSE_BETWEEN_ERRORS = [1.0, 3.0, 7.0, 60.0];
 
@@ -24,7 +25,8 @@ LayerUpdateState.prototype.canTryUpdate = function canTryUpdate(timestamp) {
             return true;
         }
         case UPDATE_STATE.DEFINITIVE_ERROR:
-        case UPDATE_STATE.PENDING: {
+        case UPDATE_STATE.PENDING:
+        case UPDATE_STATE.FINISHED: {
             return false;
         }
         case UPDATE_STATE.ERROR:
@@ -54,10 +56,18 @@ LayerUpdateState.prototype.success = function success() {
     this.state = UPDATE_STATE.IDLE;
 };
 
+LayerUpdateState.prototype.noMoreUpdatePossible = function noMoreUpdatePossible() {
+    this.state = UPDATE_STATE.FINISHED;
+};
+
 LayerUpdateState.prototype.failure = function failure(timestamp, definitive) {
     this.lastErrorTimestamp = timestamp;
     this.state = definitive ? UPDATE_STATE.DEFINITIVE_ERROR : UPDATE_STATE.ERROR;
     this.errorCount++;
+};
+
+LayerUpdateState.prototype.inError = function inError() {
+    return this.state == UPDATE_STATE.DEFINITIVE_ERROR || this.state == UPDATE_STATE.ERROR;
 };
 
 export default LayerUpdateState;

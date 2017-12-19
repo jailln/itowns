@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import convexHull from 'monotone-convex-hull-2d';
-import { CancelledCommandException } from '../Core/Scheduler/Scheduler';
+import CancelledCommandException from '../Core/Scheduler/CancelledCommandException';
 
 // Draw a cube with lines (12 lines).
 function cube(size) {
@@ -103,6 +103,7 @@ function initBoundingBox(elt, layer) {
     elt.obj.boxHelper.material.linewidth = 2;
     elt.obj.boxHelper.layers.mask = layer.bboxes.layers.mask;
     layer.bboxes.add(elt.obj.boxHelper);
+    elt.obj.boxHelper.updateMatrixWorld();
 }
 
 function shouldDisplayNode(context, layer, elt) {
@@ -116,14 +117,14 @@ function shouldDisplayNode(context, layer, elt) {
 
     const cl = (elt.tightbbox ? elt.tightbbox : elt.bbox);
 
-    const visible = context.camera.isBox3Visible(cl);
+    const visible = context.camera.isBox3Visible(cl, layer.object3d.matrixWorld);
     const surfaceOnScreen = 0;
 
     if (visible) {
         if (cl.containsPoint(context.camera.camera3D.position)) {
             shouldBeLoaded = 1;
         } else {
-            const surfaceOnScreen = box3SurfaceOnScreen(context.camera, cl);
+            const surfaceOnScreen = box3SurfaceOnScreen(context.camera, cl, layer.object3d.matrixWorld);
 
             // no point indicates shallow hierarchy, so we definitely want to load its children
             if (numPoints == 0) {
@@ -174,17 +175,6 @@ export default {
             return [];
         }
 
-        if (!layer.group) {
-            layer.group = new THREE.Group();
-            context.view.scene.add(layer.group);
-        }
-
-        if (!layer.bboxes) {
-            layer.bboxes = new THREE.Group();
-            layer.bboxes.layers.set(context.view.mainLoop.gfxEngine.getUniqueThreejsLayer());
-            context.view.scene.add(layer.bboxes);
-        }
-
         // Start updating from hierarchy root
         return [layer.root];
     },
@@ -204,8 +194,7 @@ export default {
                     if (__DEBUG__) {
                         elt.obj.material.uniforms.density.value = elt.density;
 
-                        const boundingBoxEnabled = context.view.camera.camera3D.layers.mask & layer.bboxes.layers.mask;
-                        if (boundingBoxEnabled) {
+                        if (layer.bboxes.visible) {
                             if (!elt.obj.boxHelper) {
                                 initBoundingBox(elt, layer);
                             }
@@ -233,6 +222,10 @@ export default {
                         isLeaf: elt.childrenBitField == 0,
                         earlyDropFunction: cmd => cmd.requester.shouldBeLoaded <= 0,
                     }).then((pts) => {
+                        if (layer.onPointsCreated) {
+                            layer.onPointsCreated(layer, pts);
+                        }
+
                         elt.obj = pts;
                         // store tightbbox to avoid ping-pong (bbox = larger => visible, tight => invisible)
                         elt.tightbbox = pts.tightbbox;
@@ -242,6 +235,7 @@ export default {
                         // make sure to add it here, otherwise it might never
                         // be added nor cleaned
                         layer.group.add(elt.obj);
+                        elt.obj.updateMatrixWorld(true);
 
                         elt.obj.owner = elt;
                         elt.promise = null;

@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import Coordinates, { crsToUnit, crsIsGeographic, assertCrsIsValid, convertValueToUnit, reasonnableEpsilonForUnit } from '../Geographic/Coordinates';
+import Projection from '../Geographic/Projection';
 
+const projection = new Projection();
 /**
  * Extent is a SIG-area (so 2D)
  * It can use explicit coordinates (e.g: lon/lat) or implicit (WMTS coordinates)
@@ -90,7 +92,35 @@ Extent.prototype.as = function as(crs) {
     assertCrsIsValid(crs);
 
     if (_isTiledCRS(this._crs)) {
-        throw new Error('Unsupported yet');
+        if (this._crs == 'WMTS:PM') {
+            // Convert this to the requested crs by using 4326 as an intermediate state.
+            const nbCol = Math.pow(2, this.zoom);
+            const size = 360 / nbCol;
+            // convert column PM to longitude EPSG:4326 degree
+            const west = 180 - size * (nbCol - this.col);
+            const east = 180 - size * (nbCol - (this.col + 1));
+            const nbRow = nbCol;
+            const sizeRow = 1.0 / nbRow;
+            // convert row PM to Y PM
+            const Yn = 1 - sizeRow * (nbRow - (this.row));
+            const Ys = 1 - sizeRow * (nbRow - (this.row + 1));
+            // convert Y PM to latitude EPSG:4326 degree
+            const north = THREE.Math.radToDeg(projection.YToWGS84(Yn));
+            const south = THREE.Math.radToDeg(projection.YToWGS84(Ys));
+            // create intermediate EPSG:4326 and convert in new crs
+            return new Extent('EPSG:4326', { west, east, south, north }).as(crs);
+        } else if (this._crs == 'WMTS:WGS84G' && crs == 'EPSG:4326') {
+            const nbRow = Math.pow(2, this.zoom);
+            const size = 180 / nbRow;
+            const north = size * (nbRow - this.row) - 90;
+            const south = size * (nbRow - (this.row + 1)) - 90;
+            const west = 180 - size * (2 * nbRow - this.col);
+            const east = 180 - size * (2 * nbRow - (this.col + 1));
+
+            return new Extent(crs, { west, east, south, north });
+        } else {
+            throw new Error('Unsupported yet');
+        }
     }
 
     if (this._crs != crs) {
@@ -111,7 +141,11 @@ Extent.prototype.as = function as(crs) {
         let south = Infinity;
         let east = -Infinity;
         let west = Infinity;
+        // loop over the coordinates
         for (let i = 0; i < cardinals.length; i++) {
+            // add the internalStorageUnit to the coordinate.
+            cardinals[i]._internalStorageUnit = this._internalStorageUnit;
+            // convert the coordinate.
             cardinals[i] = cardinals[i].as(crs);
             north = Math.max(north, cardinals[i]._values[1]);
             south = Math.min(south, cardinals[i]._values[1]);
@@ -141,10 +175,10 @@ Extent.prototype.offsetToParent = function offsetToParent(other) {
         const r = (this._row - (this._row % diff)) * invDiff;
         const c = (this._col - (this._col % diff)) * invDiff;
 
-        return new THREE.Vector3(
+        return new THREE.Vector4(
             this._col * invDiff - c,
             this._row * invDiff - r,
-            invDiff);
+            invDiff, invDiff);
     }
 
     const dimension = {
@@ -157,10 +191,15 @@ Extent.prototype.offsetToParent = function offsetToParent(other) {
     const originY =
         (other.north() - this.north(other._internalStorageUnit)) / dimension.y;
 
-    const scale =
+    const scaleX =
         Math.abs(
             this.east(other._internalStorageUnit) - this.west(other._internalStorageUnit)) / dimension.x;
-    return new THREE.Vector3(originX, originY, scale);
+
+    const scaleY =
+        Math.abs(
+            this.north(other._internalStorageUnit) - this.south(other._internalStorageUnit)) / dimension.y;
+
+    return new THREE.Vector4(originX, originY, scaleX, scaleY);
 };
 
 Extent.prototype.west = function west(unit) {
@@ -228,22 +267,22 @@ Extent.prototype.dimensions = function dimensions(unit) {
  * Return true if coord is inside the bounding box.
  *
  * @param {Coordinates} coord
+ * @param {number} epsilon coord is inside the extent (+/- epsilon)
  * @return {boolean}
  */
-Extent.prototype.isPointInside = function isPointInside(coord) {
+Extent.prototype.isPointInside = function isPointInside(coord, epsilon = 0) {
     const c = (this.crs() == coord.crs) ? coord : coord.as(this.crs());
-
     // TODO this ignores altitude
     if (crsIsGeographic(this.crs())) {
-        return c.longitude(this._internalStorageUnit) <= this.east() &&
-               c.longitude(this._internalStorageUnit) >= this.west() &&
-               c.latitude(this._internalStorageUnit) <= this.north() &&
-               c.latitude(this._internalStorageUnit) >= this.south();
+        return c.longitude(this._internalStorageUnit) <= this.east() + epsilon &&
+               c.longitude(this._internalStorageUnit) >= this.west() - epsilon &&
+               c.latitude(this._internalStorageUnit) <= this.north() + epsilon &&
+               c.latitude(this._internalStorageUnit) >= this.south() - epsilon;
     } else {
-        return c.x() <= this.east() &&
-               c.x() >= this.west() &&
-               c.y() <= this.north() &&
-               c.y() >= this.south();
+        return c.x() <= this.east() + epsilon &&
+               c.x() >= this.west() - epsilon &&
+               c.y() <= this.north() + epsilon &&
+               c.y() >= this.south() - epsilon;
     }
 };
 
@@ -287,8 +326,10 @@ Extent.prototype.offsetScale = function offsetScale(bbox) {
     var originX = (bbox.west(this._internalStorageUnit) - this.west()) / dimension.x;
     var originY = (bbox.north(this._internalStorageUnit) - this.north()) / dimension.y;
 
-    var scale = Math.abs(bbox.east(this._internalStorageUnit) - bbox.west(this._internalStorageUnit)) / dimension.x;
-    return new THREE.Vector3(originX, originY, scale);
+    var scaleX = Math.abs(bbox.east(this._internalStorageUnit) - bbox.west(this._internalStorageUnit)) / dimension.x;
+    var scaleY = Math.abs(bbox.north(this._internalStorageUnit) - bbox.south(this._internalStorageUnit)) / dimension.y;
+
+    return new THREE.Vector4(originX, originY, scaleX, scaleY);
 };
 
 /**
@@ -296,13 +337,30 @@ Extent.prototype.offsetScale = function offsetScale(bbox) {
  * @param {type} bbox
  * @returns {Boolean}
  */
-Extent.prototype.intersect = function intersect(bbox) {
+Extent.prototype.intersectsExtent = function intersectsExtent(bbox) {
     const other = bbox.as(this.crs());
     return !(this.west() >= other.east(this._internalStorageUnit) ||
              this.east() <= other.west(this._internalStorageUnit) ||
              this.south() >= other.north(this._internalStorageUnit) ||
              this.north() <= other.south(this._internalStorageUnit));
 };
+
+/**
+ * @documentation: Return the intersection of this extent with another one
+ * @param {type} other
+ * @returns {Boolean}
+ */
+Extent.prototype.intersect = function intersect(other) {
+    if (!this.intersectsExtent(other)) {
+        return new Extent(this.crs(), 0, 0, 0, 0);
+    }
+    return new Extent(this.crs(),
+        Math.max(this.west(), other.west(this._internalStorageUnit)),
+        Math.min(this.east(), other.east(this._internalStorageUnit)),
+        Math.max(this.south(), other.south(this._internalStorageUnit)),
+        Math.min(this.north(), other.north(this._internalStorageUnit)));
+};
+
 
 Extent.prototype.set = function set(west, east, south, north) {
     this._values[CARDINAL.WEST] = west;
@@ -311,9 +369,9 @@ Extent.prototype.set = function set(west, east, south, north) {
     this._values[CARDINAL.NORTH] = north;
 };
 
-Extent.prototype.merge = function merge(extent) {
+Extent.prototype.union = function union(extent) {
     if (extent.crs() != this.crs()) {
-        throw new Error('unsupported merge between 2 diff crs');
+        throw new Error('unsupported union between 2 diff crs');
     }
     const west = extent.west(this._internalStorageUnit);
     if (west < this.west()) {
@@ -333,6 +391,30 @@ Extent.prototype.merge = function merge(extent) {
     const north = extent.north(this._internalStorageUnit);
     if (north > this.north()) {
         this._values[CARDINAL.NORTH] = north;
+    }
+};
+
+/**
+ * expandByPoint perfoms the minimal extension
+ * for the point to belong to this Extent object
+ * @param {Coordinates} coordinates  The coordinates to belong
+ */
+Extent.prototype.expandByPoint = function expandByPoint(coordinates) {
+    const coords = coordinates.as(this.crs());
+    const unit = coords._internalStorageUnit;
+    const we = convertValueToUnit(unit, this._internalStorageUnit, coords._values[0]);
+    if (we < this.west()) {
+        this._values[CARDINAL.WEST] = we;
+    }
+    if (we > this.east()) {
+        this._values[CARDINAL.EAST] = we;
+    }
+    const sn = convertValueToUnit(unit, this._internalStorageUnit, coords._values[1]);
+    if (sn < this.south()) {
+        this._values[CARDINAL.SOUTH] = sn;
+    }
+    if (sn > this.north()) {
+        this._values[CARDINAL.NORTH] = sn;
     }
 };
 

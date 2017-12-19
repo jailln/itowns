@@ -8,7 +8,8 @@ import Extent from '../../Geographic/Extent';
 import Provider from './Provider';
 import Fetcher from './Fetcher';
 import CacheRessource from './CacheRessource';
-import GeoJSON2Three from '../../../Renderer/ThreeExtended/GeoJSON2Three';
+import GeoJSON2Features from '../../../Renderer/ThreeExtended/GeoJSON2Features';
+import Feature2Mesh from '../../../Renderer/ThreeExtended/Feature2Mesh';
 
 function WFS_Provider() {
     this.cache = CacheRessource();
@@ -51,7 +52,7 @@ WFS_Provider.prototype.preprocessDataLayer = function preprocessDataLayer(layer)
 };
 
 WFS_Provider.prototype.tileInsideLimit = function tileInsideLimit(tile, layer) {
-    return (layer.level === undefined || tile.level === layer.level) && layer.extent.intersect(tile.extent);
+    return (layer.level === undefined || tile.level === layer.level) && layer.extent.intersectsExtent(tile.extent);
 };
 
 WFS_Provider.prototype.executeCommand = function executeCommand(command) {
@@ -97,7 +98,10 @@ WFS_Provider.prototype.getFeatures = function getFeatures(crs, tile, layer) {
     if (result.feature !== undefined) {
         return Promise.resolve(result);
     }
-    return Fetcher.json(url, layer.networkOptions).then(geojson => assignLayer(GeoJSON2Three.parse(crs, geojson, tile.extent), layer));
+
+    layer.convert = layer.convert ? layer.convert : Feature2Mesh.convert({});
+
+    return Fetcher.json(url, layer.networkOptions).then(geojson => assignLayer(layer.convert(GeoJSON2Features.parse(crs, geojson, tile.extent, { filter: layer.filter })), layer));
 };
 
 WFS_Provider.prototype.getPointOrder = function getPointOrder(crs) {

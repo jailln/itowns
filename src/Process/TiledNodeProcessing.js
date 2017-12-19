@@ -1,5 +1,5 @@
 import Extent from '../Core/Geographic/Extent';
-import { CancelledCommandException } from '../Core/Scheduler/Scheduler';
+import CancelledCommandException from '../Core/Scheduler/CancelledCommandException';
 import ObjectRemovalHelper from './ObjectRemovalHelper';
 
 function subdivisionExtents(bbox) {
@@ -126,7 +126,9 @@ export function processTiledGeometryNode(cullingTest, subdivisionTest) {
 
             if (node.material.visible) {
                 // update uniforms
-                node.setFog(1000000000);
+                if (context.view.fogDistance != undefined) {
+                    node.setFog(context.view.fogDistance);
+                }
 
                 if (!requestChildrenUpdate) {
                     return ObjectRemovalHelper.removeChildren(layer.id, node);
