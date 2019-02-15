@@ -8,7 +8,7 @@ import { pre3dTilesUpdate, process3dTilesNode, init3dTilesLayer } from '../Proce
 import utf8Decoder from '../utils/Utf8Decoder';
 
 
-export function $3dTilesIndex(tileset, baseURL) {
+export function $3dTilesIndex(tileset, baseURL, options) {
     let counter = 1;
     this.index = {};
     const inverseTileTransform = new THREE.Matrix4();
@@ -39,8 +39,8 @@ export function $3dTilesIndex(tileset, baseURL) {
             }
         }
 
-        node.viewerRequestVolume = node.viewerRequestVolume ? getBox(node.viewerRequestVolume, inverseTileTransform) : undefined;
-        node.boundingVolume = getBox(node.boundingVolume, inverseTileTransform);
+        node.viewerRequestVolume = node.viewerRequestVolume ? getBox(node.viewerRequestVolume, inverseTileTransform, options) : undefined;
+        node.boundingVolume = getBox(node.boundingVolume, inverseTileTransform, options);
 
         this.index[counter] = node;
         node.tileId = counter;
@@ -95,13 +95,17 @@ function preprocessDataLayer(layer, view, scheduler) {
     return Fetcher.json(layer.url, layer.networkOptions).then((tileset) => {
         layer.tileset = tileset;
         const urlPrefix = layer.url.slice(0, layer.url.lastIndexOf('/') + 1);
-        layer.tileIndex = new $3dTilesIndex(tileset, urlPrefix);
+        // Temporal related options
+        var options = { TemporalExtension: layer.TemporalExtension };
+        layer.tileIndex = new $3dTilesIndex(tileset, urlPrefix, options);
         layer.asset = tileset.asset;
         return init3dTilesLayer(view, scheduler, layer, tileset.root);
     });
 }
 
-function getBox(volume, inverseTileTransform) {
+function getBox(volume, inverseTileTransform, options) {
+    let tile_box = {};
+
     if (volume.region) {
         const region = volume.region;
         const extent = new Extent('EPSG:4326',
@@ -119,7 +123,7 @@ function getBox(volume, inverseTileTransform) {
         box.matrix.premultiply(inverseTileTransform);
         // update position, rotation and scale
         box.matrix.decompose(box.position, box.quaternion, box.scale);
-        return { region: box };
+        tile_box = { region: box };
     } else if (volume.box) {
         // TODO: only works for axis aligned boxes
         const box = volume.box;
@@ -135,11 +139,19 @@ function getBox(volume, inverseTileTransform) {
         const b = center.z - box[11];
         const t = center.z + box[11];
 
-        return { box: new THREE.Box3(new THREE.Vector3(w, s, b), new THREE.Vector3(e, n, t)) };
+        tile_box = { box: new THREE.Box3(new THREE.Vector3(w, s, b), new THREE.Vector3(e, n, t)) };
     } else if (volume.sphere) {
         const sphere = new THREE.Sphere(new THREE.Vector3(volume.sphere[0], volume.sphere[1], volume.sphere[2]), volume.sphere[3]);
-        return { sphere };
+        tile_box = { sphere };
     }
+
+    // if tileset of the current tile has a temporal extension, then parse the
+    // temporal interval of existence of the tile along with its 3D boundingVolume
+    if (typeof options !== 'undefined' && options.TemporalExtension) {
+        tile_box.start_date = volume.start_date;
+        tile_box.end_date = volume.end_date;
+    }
+    return tile_box;
 }
 
 function b3dmToMesh(data, layer, url) {
@@ -150,6 +162,7 @@ function b3dmToMesh(data, layer, url) {
         overrideMaterials: layer.overrideMaterials,
         doNotPatchMaterial: layer.doNotPatchMaterial,
         opacity: layer.opacity,
+        TemporalExtension: layer.TemporalExtension,
     };
     return B3dmParser.parse(data, options).then((result) => {
         const batchTable = result.batchTable;
@@ -195,6 +208,19 @@ export function configureTile(tile, layer, metadata, parent) {
     if (tile.boundingVolume.region) {
         tile.add(tile.boundingVolume.region);
     }
+    // If existing, Parse temporal metadata and add it to the tile
+    if (metadata.boundingVolume.start_date && metadata.boundingVolume.end_date) {
+        const start_year = parseInt(metadata.boundingVolume.start_date.substring(0, 4), 10);
+        const start_month = parseInt(metadata.boundingVolume.start_date.substring(5, 7), 10) - 1; // Month starts at 0 in Date
+        const start_day = parseInt(metadata.boundingVolume.start_date.substring(8, 10), 10);
+        tile.boundingVolume.startDate = new Date(start_year, start_month, start_day);
+
+        const end_year = parseInt(metadata.boundingVolume.end_date.substring(0, 4), 10);
+        const end_month = parseInt(metadata.boundingVolume.end_date.substring(5, 7), 10) - 1; // Month starts at 0 in Date
+        const end_day = parseInt(metadata.boundingVolume.end_date.substring(8, 10), 10);
+        tile.boundingVolume.endDate = new Date(end_year, end_month, end_day);
+    }
+
     tile.updateMatrixWorld();
 }
 

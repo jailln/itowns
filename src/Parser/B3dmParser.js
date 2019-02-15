@@ -5,6 +5,7 @@ import BatchTableParser from './BatchTableParser';
 import Capabilities from '../Core/System/Capabilities';
 import shaderUtils from '../Renderer/Shader/ShaderUtils';
 import utf8Decoder from '../utils/Utf8Decoder';
+import TemporalMaterial from '../Renderer/TemporalMaterial';
 
 const matrixChangeUpVectorZtoY = (new THREE.Matrix4()).makeRotationX(Math.PI / 2);
 // For gltf rotation
@@ -125,7 +126,9 @@ export default {
                     const init_mesh = function f_init(mesh) {
                         mesh.frustumCulled = false;
                         if (mesh.material) {
-                            if (options.overrideMaterials) {
+                            if (options.TemporalExtension) {
+                                mesh.material = new TemporalMaterial();
+                            } else if (options.overrideMaterials) {
                                 mesh.material.dispose();
                                 if (typeof (options.overrideMaterials) === 'object' &&
                                     options.overrideMaterials.isMaterial) {
@@ -160,7 +163,23 @@ export default {
                     glTFLoader.parse(gltfBuffer, urlBase, onload);
                 }
             }));
-            return Promise.all(promises).then(values => ({ gltf: values[1], batchTable: values[0] }));
+            return Promise.all(promises).then((values) => {
+                const gltf = values[1];
+                const batchTable = values[0];
+
+                if (options.TemporalExtension) {
+                    const setup_tmp_uniforms = function f_setup_uniforms(mesh) {
+                        if (mesh.material) {
+                            const discardTemporal = []; // Create tab of boolean with all value at false for temporal culling
+                            batchTable.discardTemporal = discardTemporal;
+                            mesh.material.setupTemporalUniforms(batchTable.year_of_construction.length, batchTable.discardTemporal);
+                        }
+                    };
+                    gltf.scene.traverse(setup_tmp_uniforms);
+                }
+
+                return { gltf, batchTable };
+            });
         } else {
             throw new Error('Invalid b3dm file.');
         }

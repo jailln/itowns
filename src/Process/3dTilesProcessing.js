@@ -70,7 +70,12 @@ function _subdivideNodeAdditive(context, layer, node, cullingTest) {
             overrideMatrixWorld = tmpMatrix.multiplyMatrices(node.matrixWorld, child.transform);
         }
 
-        const isVisible = cullingTest ? !cullingTest(context.camera, child, overrideMatrixWorld) : true;
+        // Temporal related options
+        var options = {
+            TemporalExtension: layer.TemporalExtension,
+            displayDate: layer.displayDate,
+        };
+        const isVisible = cullingTest ? !cullingTest(context.camera, child, overrideMatrixWorld, options) : true;
 
         // child is not visible => skip
         if (!isVisible) {
@@ -120,7 +125,44 @@ function _subdivideNodeSubstractive(context, layer, node) {
     }
 }
 
-export function $3dTilesCulling(camera, node, tileMatrixWorld) {
+// Function called by $3dTilesCulling when temporal is enabled in 3d-tiles layer
+function cullingTemporal(node, displayDate) {
+    // All attributes of the batch table have the same length
+    for (var i = 0; i < node.batchTable.year_of_construction.length; i++) {
+        if ((node.batchTable.year_of_construction[i] !== null && node.batchTable.year_of_construction[i] > displayDate)
+            || (node.batchTable.year_of_demolition[i] !== null && node.batchTable.year_of_demolition[i] < displayDate)) {
+            node.batchTable.discardTemporal[i] = true; // don't display the geometry
+        }
+        else {
+            node.batchTable.discardTemporal[i] = false;
+        }
+    }
+}
+
+// options allows to know if temporality if enabled in the 3d-tiles layer and
+// if yes it also contains the current displayDate
+export function $3dTilesCulling(camera, node, tileMatrixWorld, options) {
+    // if tileset has a temporal extension, then do culling test related to
+    // display date
+    // if (!typeof (options) === 'undefined' && options.TemporalExtension) {
+    if (typeof options !== 'undefined' && options.TemporalExtension) {
+        if (options.displayDate) {
+            // Temporal culling of tiles
+            if (node.boundingVolume.startDate && node.boundingVolume.startDate > options.displayDate
+                || node.boundingVolume.endDate && node.boundingVolume.endDate < options.displayDate) {
+                // don't display the boundingVolume
+                return true;
+            }
+            // Temporal culling of features
+            if (node.batchTable && node.batchTable.year_of_construction && node.batchTable.year_of_demolition) {
+                cullingTemporal(node, options.displayDate);
+            }
+        } else {
+            throw new Error(`displayDate must be specified in 3d-tiles layer for
+                using temporal extension.`);
+        }
+    }
+
     // For viewer Request Volume https://github.com/AnalyticalGraphicsInc/3d-tiles-samples/tree/master/tilesets/TilesetWithRequestVolume
     if (node.viewerRequestVolume) {
         const nodeViewer = node.viewerRequestVolume;
@@ -330,10 +372,14 @@ export function process3dTilesNode(cullingTest = $3dTilesCulling, subdivisionTes
             return undefined;
         }
 
+        // Temporal related options
+        var options = {
+            TemporalExtension: layer.TemporalExtension,
+            displayDate: layer.displayDate,
+        };
         // do proper culling
-        const isVisible = cullingTest ? (!cullingTest(context.camera, node, node.matrixWorld)) : true;
+        const isVisible = cullingTest ? (!cullingTest(context.camera, node, node.matrixWorld, options)) : true;
         node.visible = isVisible;
-
 
         if (isVisible) {
             if (node.cleanableSince) {

@@ -1,0 +1,86 @@
+<html>
+    <head>
+        <title>Itowns - 3D Tiles temporal Planar example</title>
+
+        <meta charset="UTF-8">
+
+        <link rel="stylesheet" type="text/css" href="css/example.css">
+        <link rel="stylesheet" type="text/css" href="css/loading_screen.css">
+        <style type="text/css">
+            #batchInformationDiv {
+                position: absolute;
+                z-index: 0;
+                top: 30px;
+                right: 0;
+                color: white;
+                color: #eee;
+                font: 11px 'Lucida Grande',sans-serif;
+                line-height: normal;
+                text-shadow: 0 -1px 0 #111;
+                padding: 0 1rem;
+                background: #1a1a1a;
+                border: 1px solid #2c2c2c;
+                opacity: 0.8;
+            }
+
+            #batchInformationDiv > p {
+                margin: 0.5rem 0;
+            }
+
+            #batchInformationDiv > ul {
+                padding: 0 1rem;
+            }
+
+            @media (max-width: 600px) {
+                #batchInformationDiv {
+                    display: none;
+                }
+            }
+
+            #date {
+               position: absolute;
+               z-index: 0;
+               top: 200px;
+               right: 0;
+               color: white;
+               color: #eee;
+               font: 12px 'Lucida Grande',sans-serif;
+               line-height: normal;
+               text-shadow: 0 -1px 0 #111;
+               padding: 0 1rem;
+               background: #1a1a1a;
+               border: 1px solid #2c2c2c;
+               opacity: 0.8;
+           }
+           @media (max-width: 600px) {
+                #date {
+                    display: none;
+                }
+            }
+        </style>
+
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body>
+        <div id="viewerDiv"></div>
+
+        <div id="date">
+            <p><b>Display Date:</b></p>
+            <p contenteditable="true" id="dateEdit"></p>
+            <button type="button" id="dateButton">Load</button>
+        </div>
+        <div id="batchInformationDiv">
+            <p><b>Information Batch Table: </b></p>
+            <ul id="info">
+            </ul>
+        </div>
+
+        <script src="../dist/itowns.js"></script>
+        <script src="js/loading_screen.js"></script>
+        <script src="../dist/debug.js"></script>
+        <script src="js/GUI/dat.gui/dat.gui.min.js"></script>
+        <script src="js/GUI/GuiTools.js"></script>
+
+        <script src="planar_3dtiles_temporal.js"></script>
+    </body>
+</html>
