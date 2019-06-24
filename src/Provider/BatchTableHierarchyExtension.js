@@ -1,15 +1,7 @@
-import { $3dTilesAbstractExtension } from '../Provider/3dTilesProvider';
+import { BatchTable, $3dTilesAbstractExtension } from './3dTilesClasses';
 
-/** @classdesc
- * Class for storing and accessing information relative to the
- *  [3DTILES_batch_table_hierarchy extension]{@link https://github.com/AnalyticalGraphicsInc/3d-tiles/tree/master/extensions/3DTILES_batch_table_hierarchy}
- *  of 3D Tiles */
-class BatchTableHierarchyExtension extends $3dTilesAbstractExtension {
-    /**
-     * @param {Object} json - json holding the extension
-     */
+class BTHExtension_BatchTable {
     constructor(json) {
-        super($3dTilesAbstractExtension);
         this.classes = json.classes;
         // inverseHierarchy contains for each instance (i.e. georgraphic
         // feature e.g. building, roof, etc.) an array of the indexes of its
@@ -95,20 +87,34 @@ class BatchTableHierarchyExtension extends $3dTilesAbstractExtension {
 }
 
 /**
- * @module BatchTableHierarchyExtensionParser
+ * @module BatchTableHierarchyExtension
  */
-export default {
+export default class BatchTableHierarchyExtension extends $3dTilesAbstractExtension {
     /**
      * Parses a
-     * [3DTILES_batch_table_hierarchy extension]{@link https://github.com/AnalyticalGraphicsInc/3d-tiles/tree/master/extensions/3DTILES_batch_table_hierarchy}
-     * and returns a Promise that resolves with a BatchTableHierarchyExtension
-     * object.
+     * [3DTILES_batch_table_hierarchy
+     * extension]{@link https://github.com/AnalyticalGraphicsInc/3d-tiles/tree/master/extensions/3DTILES_batch_table_hierarchy} and returns a Promise that resolves with a BatchTableHierarchyExtension declined object.
      * @param {Object} json - json holding the extension
-     * @return {Promise} - a promise that resolves with a
-     *     BatchTableHierarchyExtension object.
+     * @return {Object} - a declined BatchTableHierarchyExtension object.
      */
-    parse(json) {
-        return Promise.resolve(new BatchTableHierarchyExtension(json));
-    },
-};
+    // TODO: généraliser ce if / else ? + utiliser l'opérateur ternaire ?
+    // eslint-disable-next-line class-methods-use-this
+    parse(json, context) {
+        if (context instanceof BatchTable) {
+            return new BTHExtension_BatchTable(json);
+        } else {
+            return undefined;
+        }
+    }
 
+    // TODO: plutôt passer la batch table (faire comme dans culling de
+    //  temporalextension)
+    // eslint-disable-next-line class-methods-use-this
+    getPickingInfo(extObject, featureId) {
+        if (extObject instanceof BTHExtension_BatchTable) {
+            return extObject.getPickingInfo(featureId);
+        } else {
+            return {};
+        }
+    }
+}

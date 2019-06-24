@@ -1,0 +1,667 @@
+<html>
+    <head>
+        <title>Itowns - 3D Tiles time evolving cities example</title>
+
+        <meta charset="UTF-8">
+        <link rel="stylesheet" type="text/css" href="css/example.css">
+        <link rel="stylesheet" type="text/css" href="css/loading_screen.css">
+        <style type="text/css">
+            /* *** Batch Table information */
+            #featureInfoDiv {
+                top: 50%;
+                /* transform: translate(-50%,0%); */
+            }
+            /* *** Legend */
+            #legend {
+                border : 1px solid rgb(75,75,75);
+                border-top: none;
+                font: 15px 'Lucida Grande',sans-serif;
+            }
+            #legend ul {
+                list-style: none;
+                font-weight: bold;
+            }
+            #legend ul li {
+                margin-bottom: 4px;
+            }
+            .legendBox {
+                float: left;
+                width: 30px;
+                height: 16px;
+                margin-right: 10px;
+                border: 1px solid #D3D3D3;
+            }
+            #redBox {
+                background: #ff0000;
+            }
+            #greenBox {
+                background: #009900;
+            }
+            #orangeBox {
+                background: #ff5733;
+            }
+            #blueBox {
+                background: #0000ff;
+            }
+            #yellowBox {
+                background: #FFD700;
+            }
+            #cyanBox {
+                background: #00FFFF;
+            }
+            /* *** UDV Date Slider */
+            #temporalWindow{
+                border : 1px solid rgb(75,75,75);
+                position: absolute;
+                z-index: 10;
+                text-align: center;
+                margin: auto;
+                bottom : 5px;
+                left : 0;
+                right : 0;
+                width: 30%;
+                height: 80px;
+                color: white;
+                background-color: rgba(30,30,30,0.8);
+                padding-left: 3px;
+                padding-top: 3px;
+                pointer-events: none;
+            }
+            #timeSliderMinDate {
+                position: absolute;
+                left : 10px;
+                top  : 5px;
+                font: 28px 'Lucida Grande',sans-serif;
+                font-weight: bold;
+            }
+            #timeSliderMaxDate {
+                position: absolute;
+                right : 10px;
+                top  : 5px;
+                font: 28px 'Lucida Grande',sans-serif;
+                font-weight: bold;
+            }
+            #timeSliderValue{
+                position: absolute;
+                text-align: center;
+                margin : auto;
+                color : black;
+                font: 28px 'Lucida Grande',sans-serif;
+                font-weight: bold;
+                bottom : 5px;
+                right : 0;
+                left : 0;
+                border: 1px solid black;
+                background-color: whitesmoke;
+                height: 40px;
+                width : 90px;
+                pointer-events: auto;
+            }
+            #timeSlider {
+                width: 65%;
+
+                position: absolute;
+                z-index: 10;
+                text-align: center;
+
+                margin : auto;
+                top: 10px;
+                left: 0;
+                right : 0;
+
+                pointer-events: auto;
+            }
+        </style>
+
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="js/GUI/dat.gui/dat.gui.min.js"></script>
+    </head>
+    <body>
+        <div class="help" id="legend">
+            <h2>Buildings states</h2>
+            <h3>Projected state (t+1)</h3>
+            <ul>
+                <li><span class="legendBox" id="redBox"></span>Demolition</li>
+                <li><span class="legendBox" id="yellowBox"></span>
+                    Modification</li>
+                <li> <span class="legendBox" id="cyanBox"></span>Union /
+                    Division
+                </li>
+            </ul>
+            <h3>Current state (t)</h3>
+            <ul>
+                <li><span class="legendBox" id="greenBox"></span>Creation</li>
+                <li><span class="legendBox" id="orangeBox"></span>
+                    Modification</li>
+                <li> <span class="legendBox" id="blueBox"></span>Union /
+                    Division
+                </li>
+            </ul>
+        </div>
+        <div id="temporalWindow">
+            <div id="timeSliderMinDate">2009</div>
+            <div id="timeSliderMaxDate">2015</div>
+            <input type="text" id="timeSliderValue" value="2009">
+            <input  id="timeSlider" type="range" min="2009" max="2015"
+                    value="2009" step="1">
+        </div>
+<!--        <div id="featureInfoDiv" class="help">
+            <p><b>Feature Information:</b></p>
+            <div id="featureInfo"></div>
+        </div>-->
+        <div id="viewerDiv"></div>
+        <script src="../dist/itowns.js"></script>
+        <script src="js/loading_screen.js"></script>
+        <script src="../dist/debug.js"></script>
+        <script src="js/GUI/GuiTools.js"></script>
+        <script src="js/proj4defs/3946.js"></script>
+        <script src="js/3dTilesHelper.js"></script>
+
+        <script type="x-shader/x-vertex" id="vertexshader">
+            #define LAMBERT
+            varying vec3 vLightFront;
+            varying vec3 vIndirectFront;
+            #ifdef DOUBLE_SIDED
+                varying vec3 vLightBack;
+                varying vec3 vIndirectBack;
+            #endif
+            #include <common>
+            #include <uv_pars_vertex>
+            #include <uv2_pars_vertex>
+            #include <envmap_pars_vertex>
+            #include <bsdfs>
+            #include <lights_pars_begin>
+            #include <color_pars_vertex>
+            #include <fog_pars_vertex>
+            #include <morphtarget_pars_vertex>
+            #include <skinning_pars_vertex>
+            #include <shadowmap_pars_vertex>
+            #include <logdepthbuf_pars_vertex>
+            #include <clipping_planes_pars_vertex>
+            // -- START 3D TILES TEMPORAL EXTENSION RELATED CODE
+            // BatchID of the current vertex, added as a BufferAttribute of
+            // the mesh when the GLTF is parsed and automatically passed to this
+            // shader by THREEJS
+            attribute vec3 _BATCHID;
+            // Variable that will hold the value of the batch ID of the
+            // current vertex to be passed to the fragment shader
+            // (where we will display or not the current vertex). We need to
+            // do this because we cannot pass attributes to the fragment shader.
+            varying float batchID;
+            // -- END 3D TILES TEMPORAL EXTENSION RELATED CODE
+            void main() {
+                // -- START 3D TILES TEMPORAL EXTENSION RELATED CODE
+                batchID = _BATCHID.x;
+                // -- END 3D TILES TEMPORAL EXTENSION RELATED CODE
+                #include <uv_vertex>
+                #include <uv2_vertex>
+                #include <color_vertex>
+                #include <beginnormal_vertex>
+                #include <morphnormal_vertex>
+                #include <skinbase_vertex>
+                #include <skinnormal_vertex>
+                #include <defaultnormal_vertex>
+                #include <begin_vertex>
+                #include <morphtarget_vertex>
+                #include <skinning_vertex>
+                #include <project_vertex>
+                #include <logdepthbuf_vertex>
+                #include <clipping_planes_vertex>
+                #include <worldpos_vertex>
+                #include <envmap_vertex>
+                #include <lights_lambert_vertex>
+                #include <shadowmap_vertex>
+                #include <fog_vertex>
+            }
+		</script>
+
+        <script type="x-shader/x-fragment" id="fragmentshader">
+            uniform vec3 diffuse;
+            uniform vec3 emissive;
+            uniform float opacity;
+            varying vec3 vLightFront;
+            varying vec3 vIndirectFront;
+            #ifdef DOUBLE_SIDED
+                varying vec3 vLightBack;
+                varying vec3 vIndirectBack;
+            #endif
+            #include <common>
+            #include <packing>
+            #include <dithering_pars_fragment>
+            #include <color_pars_fragment>
+            #include <uv_pars_fragment>
+            #include <uv2_pars_fragment>
+            #include <map_pars_fragment>
+            #include <alphamap_pars_fragment>
+            #include <aomap_pars_fragment>
+            #include <lightmap_pars_fragment>
+            #include <emissivemap_pars_fragment>
+            #include <envmap_pars_fragment>
+            #include <bsdfs>
+            #include <lights_pars_begin>
+            #include <fog_pars_fragment>
+            #include <shadowmap_pars_fragment>
+            #include <shadowmask_pars_fragment>
+            #include <specularmap_pars_fragment>
+            #include <logdepthbuf_pars_fragment>
+            #include <clipping_planes_pars_fragment>
+            // -- START 3D TILES TEMPORAL EXTENSION RELATED CODE
+            uniform bool featuresCulling[BATCH_LENGTH];
+            uniform vec3 featuresColors[BATCH_LENGTH];
+            varying float batchID;
+            // -- END 3D TILES TEMPORAL EXTENSION RELATED CODE
+            void main() {
+                // -- START 3D TILES TEMPORAL EXTENSION RELATED CODE
+
+                /** Version without loop
+                // The batchId is an attribute of each vertex (stored in a
+                // BufferAttribute of the material and received as an
+                // attribute in the vertex shader). We then pass it as a
+                // varying to the fragment shader, meaning that it is
+                // interpolated for each pixel and from the values of
+                // adjacent vertices which is either the same, or batchID+1
+                // Hence, we round it downward to get the correct batchID for
+                // the current vertex.
+                int intBatchID = int(floor(batchID + 0.5));
+                vec3 diffuse;
+                if (featuresCulling[intBatchID] == true) {
+                    // Discard means that we don't write this pixel (note that
+                    // this shader only renders the 3D Tiles layer with temporal
+                    // extension so other layers such as terrain will be rendered)
+                    discard;
+                } else {
+                    // change color of pixel according to its transaction tag
+                    // (see TemporalExtension.js for color assignment)
+                    diffuse = featuresColors[intBatchID];
+                }
+                **/
+
+                /** Version with loop as uniform can be indexed only with
+                constants or with loop indexes. See here:
+                https://stackoverflow.com/questions/6247572/variable-array-index-not-possible-in-webgl-shaders
+                and here: https://stackoverflow.com/questions/19529690/index-expression-must-be-constant-webgl-glsl-error
+                Other options are:
+                 * Access these arrays in the vertex shader and pass only the
+                  value of the culling and the color instead of the whole tab
+                 * Pass these arrays as textures instead of tabs of uniforms
+                 : BEST OPTION
+                **/
+                vec3 featureDiffuse;
+                for(int i = 0 ; i < BATCH_LENGTH; ++i)
+                {
+                    if(i == int(floor(batchID + 0.5)))
+                    {
+                        if(featuresCulling[i] == true) {
+                            discard;
+                        } else {
+                            featureDiffuse = featuresColors[i];
+                        }
+                    }
+                }
+                // -- END 3D TILES TEMPORAL EXTENSION RELATED CODE
+
+                #include <clipping_planes_fragment>
+                // -- START 3D TILES TEMPORAL EXTENSION RELATED CODE
+                vec4 diffuseColor = vec4(featureDiffuse, opacity);
+                // -- END 3D TILES TEMPORAL EXTENSION RELATED CODE
+                // vec4 diffuseColor = vec4( diffuse, opacity );
+                ReflectedLight reflectedLight = ReflectedLight( vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ) );
+                vec3 totalEmissiveRadiance = emissive;
+                #include <logdepthbuf_fragment>
+                #include <map_fragment>
+                #include <color_fragment>
+                #include <alphamap_fragment>
+                #include <alphatest_fragment>
+                #include <specularmap_fragment>
+                #include <emissivemap_fragment>
+                // accumulation
+                reflectedLight.indirectDiffuse = getAmbientLightIrradiance( ambientLightColor );
+                #ifdef DOUBLE_SIDED
+                    reflectedLight.indirectDiffuse += ( gl_FrontFacing ) ? vIndirectFront : vIndirectBack;
+                #else
+                    reflectedLight.indirectDiffuse += vIndirectFront;
+                #endif
+                #include <lightmap_fragment>
+                reflectedLight.indirectDiffuse *= BRDF_Diffuse_Lambert( diffuseColor.rgb );
+                #ifdef DOUBLE_SIDED
+                    reflectedLight.directDiffuse = ( gl_FrontFacing ) ? vLightFront : vLightBack;
+                #else
+                    reflectedLight.directDiffuse = vLightFront;
+                #endif
+                reflectedLight.directDiffuse *= BRDF_Diffuse_Lambert( diffuseColor.rgb ) * getShadowMask();
+                // modulation
+                #include <aomap_fragment>
+                vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + totalEmissiveRadiance;
+                #include <envmap_fragment>
+                gl_FragColor = vec4( outgoingLight, diffuseColor.a );
+                #include <tonemapping_fragment>
+                #include <encodings_fragment>
+                #include <fog_fragment>
+                #include <premultiplied_alpha_fragment>
+                #include <dithering_fragment>
+            }
+		</script>
+
+        <script type="text/javascript">
+            // # Planar (EPSG:3946) viewer
+            // Define geographic extent: CRS, min/max X, min/max Y
+            var extent = new itowns.Extent(
+                'EPSG:3946',
+                1837860.980127206, 1847648.6685636174,
+                5169347.42659997, 5180280.0400808845);
+
+            // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
+            var viewerDiv = document.getElementById('viewerDiv');
+            // Instantiate PlanarView*
+            var view = new itowns.PlanarView(viewerDiv, extent, {
+                disableSkirt: false
+            });
+            setupLoadingScreen(viewerDiv, view);
+
+            // Add a WMS imagery source
+            var wmsImagerySource = new itowns.WMSSource({
+                extent: extent,
+                name: 'Ortho2009_vue_ensemble_16cm_CC46',
+                url: 'https://download.data.grandlyon.com/wms/grandlyon',
+                version: '1.3.0',
+                projection: 'EPSG:3946',
+                format: 'image/jpeg',
+            });
+            // Add a WMS imagery layer
+            var wmsImageryLayer = new itowns.ColorLayer('wms_imagery', {
+                updateStrategy: {
+                    type: itowns.STRATEGY_DICHOTOMY,
+                    options: {},
+                },
+                source: wmsImagerySource,
+            });
+            view.addLayer(wmsImageryLayer);
+
+            // Add a WMS elevation source
+            var wmsElevationSource = new itowns.WMSSource({
+                extent: extent,
+                url: 'https://download.data.grandlyon.com/wms/grandlyon',
+                name: 'MNT2012_Altitude_10m_CC46',
+                projection: 'EPSG:3946',
+                heightMapWidth: 256,
+                format: 'image/jpeg',
+            });
+            // Add a WMS elevation layer
+            var wmsElevationLayer = new
+            itowns.ElevationLayer('wms_elevation', {
+                useColorTextureElevation: true,
+                colorTextureElevationMinZ: 37,
+                colorTextureElevationMaxZ: 240,
+                source: wmsElevationSource,
+            });
+            view.addLayer(wmsElevationLayer);
+
+            // 3D Tiles
+
+            /* ************* dates stored using JS Date class
+
+            // Define default display date and add it to ui element for
+            // editing display date. warning: months starts at 0 in Date
+            var defaultDisplayDate = new Date(2012, 0, 2);
+            var editableDate = document.getElementById('dateEdit');
+            editableDate.textContent = defaultDisplayDate.toISOString();
+
+            // Callback called when the user changes the display dates from the
+            // ui which changes it in the layer (which calls another callback
+            // attached to the property when defining this layer property below.
+            function changeDisplayDate() {
+                var strDate = editableDate.textContent.toString();
+                var date = new Date(strDate);
+                $3dTilesLayerTemporal.displayDate = date;
+                view.notifyChange($3dTilesLayerTemporal);
+            }
+
+            */
+
+            //************* dates stored as integers (only the year is stored)
+            /*
+            var defaultDisplayDate = 2009;
+            var editableDate = document.getElementById('dateEdit');
+            editableDate.textContent = defaultDisplayDate.toString();
+
+            // Callback called when the user changes the display dates from the
+            // ui which changes it in the layer (which calls another callback
+            // attached to the property when defining this layer property below.
+            function changeDisplayDate() {
+                var strDate = editableDate.textContent.toString();
+                var numberDate = Number(strDate);
+                $3dTilesLayerTemporal.displayDate = numberDate;
+                view.notifyChange($3dTilesLayerTemporal);
+            }
+            */
+
+            // Callback called when the user changes the display dates from the
+            // ui which changes it in the layer (which calls another callback
+            // attached to the property when defining this layer property below).
+            var defaultDisplayDate = 2009;
+            var timeSlider = document.getElementById('timeSlider');
+            timeSlider.value = defaultDisplayDate.toString();
+
+            function changeDisplayDate() {
+                var strDate = timeSlider.value.toString();
+                updateTimeSliderValue(strDate);
+
+                var numberDate = Number(strDate);
+                $3dTilesLayerTemporal.displayDate = numberDate;
+                view.notifyChange($3dTilesLayerTemporal);
+            }
+
+            timeSlider.onmousemove = changeDisplayDate;
+
+            // Create a new 3D tiles layer with temporal extension
+            var $3dTilesLayerTemporal = new itowns.GeometryLayer(
+                '3d-tiles-temporal', new itowns.THREE.Group());
+            $3dTilesLayerTemporal.name = '3DTiles-temporal';
+            /* $3dTilesLayerTemporal.url =
+                'http://rict.liris.cnrs.fr/UDVDemo/Data/tileset.json'; */
+            $3dTilesLayerTemporal.url =
+            'http://localhost:8003/tilesets/3DTiles_temporal_extension/V25_FullLyonBigTiles/tileset.json';
+            $3dTilesLayerTemporal.protocol = '3d-tiles';
+
+            // Create a THREE.ShaderMaterial which is in fact a MeshLambertMaterial
+            // as the uniforms and the shaders have been copied-pasted from the one
+            // of MeshLambertMaterial.
+            // This will now give the opportunity to add some custom code to the
+            // shader in order to manage display according to batch ID
+            var shaderMaterial = new itowns.THREE.ShaderMaterial({
+                // the uniforms needed by the MeshLambertMaterial are listed
+                // here: https://github.com/mrdoob/three.js/blob/master/src/renderers/shaders/ShaderLib.js#L32
+                // Normally it should be possible to import them through
+                // THREE.UniformsLib dictionaries (see here:
+                // https://github.com/mrdoob/three.js/blob/master/src/renderers/shaders/UniformsLib.js)
+                // and to merge them with THREE.UniformsUtils.merge()  but I
+                // cannot get it working (and I'm not the only one it seems, see
+                // here : https://github.com/mrdoob/three.js/issues/1135) so I
+                // copied pasted each uniform.
+                // It seems that a cleaner method doesn't exist yet.
+                uniforms: {
+                    // common
+                    // WATCH OUT: TEMPORARY PATCH TO CHANGE COLOR IN SHADER. WE
+                    // DON'T pass the diffuse as a uniform and declare it directly
+                    // in the vertex shader as a variable to be able to assign the
+                    // color of the feature from featuresColor[] uniform to diffuse.
+                    // (because we cannot modify the value of a uniform in the shader)
+                    diffuse: { value: new itowns.THREE.Color( 0xFFFFFF ) },
+                    opacity: { value: 1.0 },
+                    map: { value: null },
+                    uvTransform: { value: new itowns.THREE.Matrix3() },
+                    alphaMap: { value: null },
+
+                    // specularmap
+                    specularMap: { value: null },
+
+                    // envmap
+                    envMap: { value: null },
+                    flipEnvMap: { value: - 1 },
+                    reflectivity: { value: 1.0 },
+                    refractionRatio: { value: 0.98 },
+                    maxMipLevel: { value: 0 },
+
+                    // aomap
+                    aoMap: { value: null },
+                    aoMapIntensity: { value: 1 },
+
+                    // lightmap
+                    lightMap: { value: null },
+                    lightMapIntensity: { value: 1 },
+
+                    // fog
+                    fogDensity: { value: 0.00025 },
+                    fogNear: { value: 1 },
+                    fogFar: { value: 2000 },
+                    fogColor: { value: new itowns.THREE.Color( 0xffffff ) },
+
+                    // lights
+                    ambientLightColor: { value: [] },
+
+                    lightProbe: { value: [] },
+
+                    directionalLights: { value: [], properties: {
+                            direction: {},
+                            color: {},
+
+                            shadow: {},
+                            shadowBias: {},
+                            shadowRadius: {},
+                            shadowMapSize: {}
+                        } },
+
+                    directionalShadowMap: { value: [] },
+                    directionalShadowMatrix: { value: [] },
+
+                    spotLights: { value: [], properties: {
+                            color: {},
+                            position: {},
+                            direction: {},
+                            distance: {},
+                            coneCos: {},
+                            penumbraCos: {},
+                            decay: {},
+
+                            shadow: {},
+                            shadowBias: {},
+                            shadowRadius: {},
+                            shadowMapSize: {}
+                        } },
+
+                    spotShadowMap: { value: [] },
+                    spotShadowMatrix: { value: [] },
+
+                    pointLights: { value: [], properties: {
+                            color: {},
+                            position: {},
+                            decay: {},
+                            distance: {},
+
+                            shadow: {},
+                            shadowBias: {},
+                            shadowRadius: {},
+                            shadowMapSize: {},
+                            shadowCameraNear: {},
+                            shadowCameraFar: {}
+                        } },
+
+                    pointShadowMap: { value: [] },
+                    pointShadowMatrix: { value: [] },
+
+                    hemisphereLights: { value: [], properties: {
+                            direction: {},
+                            skyColor: {},
+                            groundColor: {}
+                        } },
+
+                    // TODO (abelnation): RectAreaLight BRDF data needs to be moved from example to main src
+                    rectAreaLights: { value: [], properties: {
+                            color: {},
+                            position: {},
+                            width: {},
+                            height: {}
+                        } },
+                    emissive: { value: new itowns.THREE.Color( 0x000000 ) },
+                    // 3DTILES_Temporal extension uniforms
+                    featuresCulling: { value: [] },
+                    featuresColors: { value: [] }
+                },
+                vertexShader: document.getElementById(
+                    'vertexshader').textContent,
+                fragmentShader: document.getElementById(
+                    'fragmentshader').textContent,
+                lights: true
+            });
+            // TODO: on pourrait aussi tester en changeant l'alpha des primitives
+            //  plutot que de faire un discard dans le fragment ? (il faudrait
+            //  le mettre à 0. C'est apparement plus performant)
+            $3dTilesLayerTemporal.overrideMaterials = shaderMaterial;
+            // TODO: add a callback
+            $3dTilesLayerTemporal.defineLayerProperty('displayDate',
+                defaultDisplayDate);
+
+            // Register temporal extension and add it to the layer
+            // using defineLayerProperty method
+            const extensions = new itowns.$3DTilesExtensions();
+            extensions.registerExtension('3DTILES_temporal',
+                new itowns.TemporalExtension());
+
+            $3dTilesLayerTemporal.defineLayerProperty('registeredExtensions', extensions);
+
+            // TODO: picking not working with coloring for now ; Deactivated
+            // TODO: rajouter un if dans le shader qui check si il y a une valeur
+            //  dans le tab de couleur; si oui, met cette couleur et si non met
+            //  la couleur diffuse de base.
+            //  temporarily debug the temporal extension. This is probably due
+            //  to the way picking is implemented: it renders a zone near the
+            //  mouse (within a sphere with a predefined radius) and checks if
+            //  there is something, instead of performing ray tracing.
+            // add an event for picking the 3D Tiles layer and displaying
+            // information about the picked feature in an html div
+            /* var pickingArgs = {};
+            pickingArgs.htmlDiv = document.getElementById('featureInfo');
+            pickingArgs.view = view;
+            pickingArgs.layer = $3dTilesLayerTemporal;
+            itowns.View.prototype.addLayer.call(view,
+                $3dTilesLayerTemporal).then(function _() {
+                window.addEventListener('mousemove', fillHTMLWithPickingInfo.bind(pickingArgs),
+                    false); });
+            */
+            itowns.View.prototype.addLayer.call(view, $3dTilesLayerTemporal);
+
+            // Add a debug UI
+            var menu = new GuiTools('menuDiv', view);
+            menu.addImageryLayersGUI(
+                view.getLayers(function gui(l) { return l.type === 'color'; }));
+            var d = new debug.Debug(view, menu.gui);
+            debug.createTileDebugUI(menu.gui, view, view.tileLayer, d);
+            debug.create3dTilesDebugUI(menu.gui, view, $3dTilesLayerTemporal, d);
+
+            // Camera
+            p = { coord: extent.center(), heading: -49.6, range: 3000, tilt:
+                    17 };
+            itowns.CameraUtils.transformCameraToLookAtTarget(view, view.camera.camera3D, p);
+
+            // Lights
+            var dirLight = new itowns.THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(-0.9, 0.3, 1);
+            dirLight.updateMatrixWorld();
+            view.scene.add(dirLight);
+            var ambLight = new itowns.THREE.AmbientLight(0xffffff, 0.2);
+            view.scene.add(ambLight);
+
+            // Controls
+            new itowns.PlanarControls(view, {});
+
+            // Request redraw
+            view.notifyChange();
+
+            // GUI
+            function updateTimeSliderValue(val) {
+                document.getElementById('timeSliderValue').value=val;
+            }
+
+        </script>
+    </body>
+</html>

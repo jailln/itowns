@@ -142,7 +142,7 @@ export default {
                 const sizeBegin = headerByteLength + b3dmHeader.FTJSONLength +
                     b3dmHeader.FTBinaryLength;
                 promises.push(BatchTableParser.parse(
-                    buffer.slice(sizeBegin, b3dmHeader.BTJSONLength + sizeBegin), b3dmHeader.BTBinaryLength, FTJSON.BATCH_LENGTH));
+                    buffer.slice(sizeBegin, b3dmHeader.BTJSONLength + sizeBegin), b3dmHeader.BTBinaryLength, FTJSON.BATCH_LENGTH, options.registeredExtensions));
             } else {
                 promises.push(Promise.resolve({}));
             }
@@ -212,7 +212,21 @@ export default {
                     glTFLoader.parse(gltfBuffer, urlBase, onload);
                 }
             }));
-            return Promise.all(promises).then(values => ({ gltf: values[1], batchTable: values[0] }));
+            return Promise.all(promises).then((values) => {
+                const gltf = values[1];
+                const batchTable = values[0];
+
+                // WARNING: Temporary ugly code for temporal extension
+                const patchFragmentShader = function f_patchFragmentShader(mesh) {
+                    if (mesh.material) {
+                        // Patch the fragment shader to declare the length of the tables
+                        mesh.material.fragmentShader = `const int BATCH_LENGTH = ${batchTable.extensions['3DTILES_temporal'].startDates.length};\n ${mesh.material.fragmentShader}`;
+                    }
+                };
+                gltf.scene.traverse(patchFragmentShader);
+
+                return { gltf, batchTable };
+            });
         } else {
             throw new Error('Invalid b3dm file.');
         }

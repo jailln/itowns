@@ -25,6 +25,7 @@
             // obtained manually using view.controls.getCameraCoordinate() ;
             // view.controls.getCameraTargetPosition() ;
             // view.controls.getCameraOrientation()
+
             var positionOnGlobe = {
                 longitude: -75.61349109370566,
                 latitude: 40.04425929988183,
@@ -60,10 +61,15 @@
             $3dTilesLayerBTHierarchy.protocol = '3d-tiles';
             $3dTilesLayerBTHierarchy.overrideMaterials = true;
 
-            // Create and define 3D Tiles extensions needed in this example
-            itowns.$3dTilesExtensions.registerExtension(
-                "3DTILES_batch_table_hierarchy",
-                itowns.BatchTableHierarchyExtensionParser.parse);
+            // Register batch table hierarchy extension and add it to the layer
+            // using defineLayerProperty method
+            const extensions = new itowns.$3DTilesExtensions();
+            extensions.registerExtension("3DTILES_batch_table_hierarchy",
+                new itowns.BatchTableHierarchyExtension());
+
+            $3dTilesLayerBTHierarchy.defineLayerProperty('registeredExtensions');
+            $3dTilesLayerBTHierarchy.registeredExtensions =
+                extensions;
 
             // add an event for picking the 3D Tiles layer and displaying
             // information about the picked feature in an html div

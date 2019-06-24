@@ -33,10 +33,30 @@ function getPickedBatchInfo(intersects) {
 
             return {
                 batchID: batchID,
-                batchTable: batchTable
+                batchTable: batchTable,
+                layer: intersects[i].layer
             };
         }
     }
+}
+
+function getPickedExtensionsInfo(registeredExtensions, batchTable, batchID) {
+    var pickedExtensionsInfo = {};
+    if (registeredExtensions) {
+        // Call getPickingInfo of extensions
+        // for each applicative extension registered in the layer
+        for (var extName in registeredExtensions) {
+            // if batch table has an extension stored for this
+            // applicative extension
+            if(batchTable.extensions && batchTable.extensions[extName]) {
+                var extObj = registeredExtensions[extName];
+                var extDisplayableInfo = {};
+                extDisplayableInfo[extName] = extObj.getPickingInfo(batchTable.extensions[extName], batchID);
+                Object.assign(pickedExtensionsInfo, extDisplayableInfo);
+            }
+        }
+    }
+    return pickedExtensionsInfo;
 }
 
 // Function allowing picking on a given 3D tiles layer and filling an html div
@@ -74,5 +94,8 @@ function fillHTMLWithPickingInfo(event) {
     this.htmlDiv.appendChild(list);
 
     var featureDisplayableInfo = batchTable.getPickingInfo(batchID);
+    var pickedExtensionsInfo = getPickedExtensionsInfo(this.layer.registeredExtensions, batchTable, batchID);
+    Object.assign(featureDisplayableInfo, pickedExtensionsInfo);
+
     this.htmlDiv.appendChild(createHTMLListFromObject(featureDisplayableInfo));
 }

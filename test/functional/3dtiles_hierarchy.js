@@ -56,9 +56,10 @@ describe('3dtiles_hierarchy', function _() {
                         y: 90,
                     });
                     const batchInfo = getPickedBatchInfo(intersects);
-                    return batchInfo.batchTable.getPickingInfo(
-                        batchInfo.batchID,
-                    );
+                    const pickedInfo = batchInfo.batchTable.getPickingInfo(batchInfo.batchID);
+                    const pickedExtensionsInfo = getPickedExtensionsInfo(batchInfo.layer.registeredExtensions, batchInfo.batchTable, batchInfo.batchID);
+                    Object.assign(pickedInfo, pickedExtensionsInfo);
+                    return pickedInfo;
                 },
             );
 
