@@ -4,7 +4,8 @@ import { Matrix4, Object3D } from 'three';
 import Camera from 'Renderer/Camera';
 import Coordinates from 'Core/Geographic/Coordinates';
 import { computeNodeSSE } from 'Process/3dTilesProcessing';
-import { $3dTilesIndex, configureTile } from 'Provider/3dTilesProvider';
+import { configureTile } from 'Provider/3dTilesProvider';
+import $3DTileset from '../../src/Core/3DTiles/3DTileset';
 
 function tilesetWithRegion(transformMatrix) {
     const tileset = {
@@ -62,9 +63,9 @@ describe('Distance computation using boundingVolume.region', function () {
 
     it('should compute distance correctly', function () {
         const tileset = tilesetWithRegion();
-        const tileIndex = new $3dTilesIndex(tileset, '');
+        const tileIndex = new $3DTileset(tileset, '');
         const tile = new Object3D();
-        configureTile(tile, { }, tileIndex.index['1']);
+        configureTile(tile, { }, tileIndex.index[0]);
 
         computeNodeSSE(camera, tile);
 
@@ -75,9 +76,9 @@ describe('Distance computation using boundingVolume.region', function () {
         const m = new Matrix4().makeTranslation(0, 0, 10).multiply(
             new Matrix4().makeScale(0.01, 0.01, 0.01));
         const tileset = tilesetWithRegion(m);
-        const tileIndex = new $3dTilesIndex(tileset, '');
+        const tileIndex = new $3DTileset(tileset, '');
         const tile = new Object3D();
-        configureTile(tile, { }, tileIndex.index['1']);
+        configureTile(tile, { }, tileIndex.index[0]);
 
         computeNodeSSE(camera, tile);
 
@@ -95,10 +96,10 @@ describe('Distance computation using boundingVolume.box', function () {
 
     it('should compute distance correctly', function () {
         const tileset = tilesetWithBox();
-        const tileIndex = new $3dTilesIndex(tileset, '');
+        const tileIndex = new $3DTileset(tileset, '');
 
         const tile = new Object3D();
-        configureTile(tile, { }, tileIndex.index['1']);
+        configureTile(tile, { }, tileIndex.index[0]);
 
         computeNodeSSE(camera, tile);
 
@@ -110,10 +111,10 @@ describe('Distance computation using boundingVolume.box', function () {
             new Matrix4().makeScale(0.01, 0.01, 0.01));
         const tileset = tilesetWithBox(m);
 
-        const tileIndex = new $3dTilesIndex(tileset, '');
+        const tileIndex = new $3DTileset(tileset, '');
 
         const tile = new Object3D();
-        configureTile(tile, { }, tileIndex.index['1']);
+        configureTile(tile, { }, tileIndex.index[0]);
 
         tile.updateMatrixWorld(true);
 
@@ -133,10 +134,10 @@ describe('Distance computation using boundingVolume.sphere', function () {
 
     it('should compute distance correctly', function () {
         const tileset = tilesetWithSphere();
-        const tileIndex = new $3dTilesIndex(tileset, '');
+        const tileIndex = new $3DTileset(tileset, '');
 
         const tile = new Object3D();
-        configureTile(tile, { }, tileIndex.index['1']);
+        configureTile(tile, { }, tileIndex.index[0]);
 
         computeNodeSSE(camera, tile);
 
@@ -148,10 +149,10 @@ describe('Distance computation using boundingVolume.sphere', function () {
             new Matrix4().makeScale(0.01, 0.01, 0.01));
         const tileset = tilesetWithSphere(m);
 
-        const tileIndex = new $3dTilesIndex(tileset, '');
+        const tileIndex = new $3DTileset(tileset, '');
 
         const tile = new Object3D();
-        configureTile(tile, { }, tileIndex.index['1']);
+        configureTile(tile, { }, tileIndex.index[0]);
 
         tile.updateMatrixWorld(true);
 

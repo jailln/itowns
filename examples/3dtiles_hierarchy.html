@@ -60,10 +60,15 @@
             $3dTilesLayerBTHierarchy.protocol = '3d-tiles';
             $3dTilesLayerBTHierarchy.overrideMaterials = true;
 
-            // Create and define 3D Tiles extensions needed in this example
-            itowns.$3dTilesExtensions.registerExtension(
-                "3DTILES_batch_table_hierarchy",
-                itowns.BatchTableHierarchyExtensionParser.parse);
+            // Register batch table hierarchy extension and add it to the layer
+            // using defineLayerProperty method
+            const extensions = new itowns.$3DTExtensions();
+            extensions.registerExtension("3DTILES_batch_table_hierarchy",
+                new itowns.$3DTBatchTableHierarchyExtension());
+
+            $3dTilesLayerBTHierarchy.defineLayerProperty('registeredExtensions');
+            $3dTilesLayerBTHierarchy.registeredExtensions =
+                extensions;
 
             // add an event for picking the 3D Tiles layer and displaying
             // information about the picked feature in an html div

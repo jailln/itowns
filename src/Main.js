@@ -12,7 +12,6 @@ export { default as View } from 'Core/View';
 export { VIEW_EVENTS } from 'Core/View';
 export { default as Feature, FeatureCollection, FeatureGeometry, FEATURE_TYPES } from 'Core/Feature';
 export { process3dTilesNode, init3dTilesLayer, $3dTilesCulling, $3dTilesSubdivisionControl, pre3dTilesUpdate } from 'Process/3dTilesProcessing';
-export { $3dTilesExtensions, $3dTilesAbstractExtension } from 'Provider/3dTilesProvider';
 export { default as FeatureProcessing } from 'Process/FeatureProcessing';
 export { updateLayeredMaterialNodeImagery, updateLayeredMaterialNodeElevation } from 'Process/LayeredMaterialNodeProcessing';
 export { default as OrientedImageCamera } from 'Renderer/OrientedImageCamera';
@@ -64,6 +63,14 @@ export { default as GpxParser } from 'Parser/GpxParser';
 export { default as GeoJsonParser } from 'Parser/GeoJsonParser';
 export { default as KMLParser } from 'Parser/KMLParser';
 export { default as CameraCalibrationParser } from 'Parser/CameraCalibrationParser';
-export { default as BatchTableHierarchyExtensionParser } from 'Parser/BatchTableHierarchyExtensionParser';
 export { default as ShapefileParser } from 'Parser/ShapefileParser';
 export { enableDracoLoader, glTFLoader, legacyGLTFLoader } from 'Parser/B3dmParser';
+
+// 3D Tiles classes and extensions
+// Exported to allow one to implement its own 3D Tiles extension which needs to
+// know the classes it extends
+export { default as $3DTileset } from './Core/3DTiles/3DTileset';
+export { default as $3DTBoundingVolume } from './Core/3DTiles/3DTBoundingVolume';
+export { default as $3DTBatchTable } from './Core/3DTiles/3DTBatchTable';
+export { $3DTExtensions, $3DTAbstractExtension } from './Core/3DTiles/3DTExtensions';
+export { default as $3DTBatchTableHierarchyExtension } from 'Core/3DTiles/3DTBatchTableHierarchyExtension';

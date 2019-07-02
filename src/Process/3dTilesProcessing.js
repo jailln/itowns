@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import Extent from 'Core/Geographic/Extent';
+import $3DTBoundingVolume from '../Core/3DTiles/3DTBoundingVolume';
 
 function requestNewTile(view, scheduler, geometryLayer, metadata, parent, redraw) {
     const command = {
@@ -68,7 +69,7 @@ function _subdivideNodeAdditive(context, layer, node, cullingTest) {
             overrideMatrixWorld = tmpMatrix.multiplyMatrices(node.matrixWorld, child.transform);
         }
 
-        const isVisible = cullingTest ? !cullingTest(context.camera, child, overrideMatrixWorld) : true;
+        const isVisible = cullingTest ? !cullingTest(layer, context.camera, child, overrideMatrixWorld) : true;
 
         // child is not visible => skip
         if (!isVisible) {
@@ -118,42 +119,21 @@ function _subdivideNodeSubstractive(context, layer, node) {
     }
 }
 
-export function $3dTilesCulling(camera, node, tileMatrixWorld) {
-    // For viewer Request Volume https://github.com/AnalyticalGraphicsInc/3d-tiles-samples/tree/master/tilesets/TilesetWithRequestVolume
-    if (node.viewerRequestVolume) {
-        const nodeViewer = node.viewerRequestVolume;
-        if (nodeViewer.region) {
-            // TODO
-            return true;
-        }
-        if (nodeViewer.box) {
-            // TODO
-            return true;
-        }
-        if (nodeViewer.sphere) {
-            const worldCoordinateCenter = nodeViewer.sphere.center.clone();
-            worldCoordinateCenter.applyMatrix4(tileMatrixWorld);
-            // To check the distance between the center sphere and the camera
-            if (!(camera.camera3D.position.distanceTo(worldCoordinateCenter) <= nodeViewer.sphere.radius)) {
-                return true;
-            }
-        }
+export function $3dTilesCulling(layer, camera, node, tileMatrixWorld) {
+    // For viewer Request Volume
+    // https://github.com/AnalyticalGraphicsInc/3d-tiles-samples/tree/master/tilesets/TilesetWithRequestVolume
+    if (node.viewerRequestVolume && $3DTBoundingVolume.viewerRequestVolumeCulling(
+        node.viewerRequestVolume, camera, tileMatrixWorld)) {
+        return true;
     }
 
     // For bounding volume
-    if (node.boundingVolume) {
-        const boundingVolume = node.boundingVolume;
-        if (boundingVolume.region) {
-            return !camera.isBox3Visible(boundingVolume.region.box3D,
-                tileMatrixWorld.clone().multiply(boundingVolume.region.matrix));
-        }
-        if (boundingVolume.box) {
-            return !camera.isBox3Visible(boundingVolume.box, tileMatrixWorld);
-        }
-        if (boundingVolume.sphere) {
-            return !camera.isSphereVisible(boundingVolume.sphere, tileMatrixWorld);
-        }
+    if (node.boundingVolume &&
+        $3DTBoundingVolume.boundingVolumeCulling(layer, node.boundingVolume, camera,
+            tileMatrixWorld)) {
+        return true;
     }
+
     return false;
 }
 
@@ -328,9 +308,8 @@ export function process3dTilesNode(cullingTest = $3dTilesCulling, subdivisionTes
         }
 
         // do proper culling
-        const isVisible = cullingTest ? (!cullingTest(context.camera, node, node.matrixWorld)) : true;
+        const isVisible = cullingTest ? (!cullingTest(layer, context.camera, node, node.matrixWorld)) : true;
         node.visible = isVisible;
-
 
         if (isVisible) {
             if (node.cleanableSince) {
