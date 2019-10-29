@@ -83,6 +83,7 @@ function _subdivideNodeAdditive(context, layer, node, cullingTest) {
             tile.traverse((obj) => {
                 obj.extent = extent;
             });
+            layer.onTileContentLoaded(tile);
 
             context.view.notifyChange(child);
             child.loaded = true;
@@ -110,6 +111,7 @@ function _subdivideNodeSubstractive(context, layer, node) {
                         context.view.notifyChange(node);
                     }
                     layer.tileIndex.index[tile.tileId].loaded = true;
+                    layer.onTileContentLoaded(tile);
                 }));
         }
         Promise.all(promises).then(() => {
@@ -280,6 +282,7 @@ export function init3dTilesLayer(view, scheduler, layer) {
             layer.root = tile;
             layer.extent = boundingVolumeToExtent(layer.projection || view.referenceCrs,
                 tile.boundingVolume, tile.matrixWorld);
+            layer.onTileContentLoaded(tile);
         });
 }
 

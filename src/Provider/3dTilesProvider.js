@@ -33,6 +33,7 @@ function preprocessDataLayer(layer, view, scheduler) {
     layer.update = layer.update || process3dTilesNode();
     layer.sseThreshold = layer.sseThreshold || 16;
     layer.cleanupDelay = layer.cleanupDelay || 1000;
+    layer.onTileContentLoaded = layer.onTileContentLoaded || (() => {});
     // override the default method, since updated objects are metadata in this case
     layer.getObjectToUpdateForAttachedLayers = getObjectToUpdateForAttachedLayers;
 
