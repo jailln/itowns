@@ -95,7 +95,7 @@ export function updateLayeredMaterialNodeImagery(context, layer, node, parent) {
     }
 
     // Node is hidden, no need to update it
-    if (!material.visible) {
+    if (!material.visible || node.pendingSubdivision) {
         return;
     }
 
