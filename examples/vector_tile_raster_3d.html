@@ -71,10 +71,7 @@
                     name: 'OpenStreetMap',
                     url: 'http://www.openstreetmap.org/',
                 },
-                zoom: {
-                    min: 2,
-                    max: 18,
-                },
+                // do we actually need zoom here ? 
             });
 
             var mvtLayer = new itowns.ColorLayer('MVT', {
@@ -92,7 +89,7 @@
                     extrude: setExtrusion,
                     color: setColor
                 }),
-                zoom: { min: 14 },
+                zoom: { min: 13 },
             });
 
             console.log(mvtLayer); 
