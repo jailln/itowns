@@ -49,6 +49,7 @@ export default {
             return features;
         }
         
+        // console.log(layer);
 
         const extentsDestination = node.getExtentsByProjection(layer.source.crs);
         const zoomDest = extentsDestination[0].zoom;
@@ -56,6 +57,9 @@ export default {
         if (zoomDest < layer.zoom.min) {
             return;
         }
+
+        // 13 is the best zoom with no scaling
+        if (zoomDest != 13) { return; }
 
         // check if there's data in extent tile.
         if (!this.source.extentInsideLimit(node.extent, zoomDest) ||

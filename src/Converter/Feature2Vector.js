@@ -457,14 +457,30 @@ function featuresToThree(features, options, context) {
         const mesh = featureToMesh(feature, options, context);
         if (feature.altitude) {
             mesh.position.z = feature.altitude.min == Infinity ? feature.altitude.min : 0;
-            mesh.rotateZ(-Math.PI);
-            mesh.rotateZ(-Math.PI * 0.5);    
-            mesh.scale.y = -1.0;  
-            mesh.position.z += 2.0;
         }
 
         group.add(mesh);
     }
+
+    // Rotation & flip
+    group.rotateZ(-Math.PI);
+    group.rotateZ(-Math.PI * 0.5); 
+    group.rotateZ(-Math.PI * 0.5); // turn 90 degrees moire CW in 2D (bounding boxes are also rotated)
+    group.scale.y = -1.0;  
+    // repositioning to grid coordinates
+    // scaling to tile size
+    // 1.15 is almost perfect with small overlap on zoom 13
+    group.scale.x *= 1.15;
+    group.scale.y *= 1.15;
+
+    // these are values compied from the parent tile but parent tile 
+    // appears to be set to null so I cant get them??
+    group.translateX(-2446.0);
+    group.translateY(2446.0);
+    group.translateZ(0.5);
+    // group.position.z += 2.0; // hotfix to prevent z fighting with the globe itself
+    // console.log(group.parent);
+    // console.log(group.parent);
 
     return group;
 }
