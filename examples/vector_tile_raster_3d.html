@@ -89,15 +89,15 @@
                     extrude: setExtrusion,
                     color: setColor
                 }),
-                zoom: { min: 13 },
+                zoom: { min: 0 },
             });
+
+            console.log("min zoom = " + vectorMeshLayer.zoom.min);
 
             console.log(mvtLayer); 
             console.log(vectorMeshLayer);
 
             view.addLayer(vectorMeshLayer);
-
-
 
             var menuGlobe = new GuiTools('menuDiv', view, 300);
             // Listen for globe full initialisation event

@@ -48,15 +48,17 @@ export default {
         if (features.length > 0) {
             return features;
         }
+        
 
-        const extentsDestination = node.getExtentsByProjection(layer.source.crs) || [node.extent];
-
+        const extentsDestination = node.getExtentsByProjection(layer.source.crs);
         const zoomDest = extentsDestination[0].zoom;
-
         // check if it's tile level is equal to display level layer.
-        if (zoomDest != layer.zoom.min ||
+        if (zoomDest < layer.zoom.min) {
+            return;
+        }
+
         // check if there's data in extent tile.
-            !this.source.extentInsideLimit(node.extent, zoomDest) ||
+        if (!this.source.extentInsideLimit(node.extent, zoomDest) ||
         // In FileSource case, check if the feature center is in extent tile.
             (layer.source.isFileSource && !node.extent.isPointInside(layer.source.extent.center(coord)))) {
         // if not, there's not data to add at this tile.

@@ -444,6 +444,7 @@ function featuresToThree(features, options, context) {
             mesh.rotateZ(-Math.PI);    
             mesh.rotateZ(-Math.PI * 0.5);    
             mesh.scale.y = -1.0;      
+            mesh.position.z += 2.0; // hotfix to prevent z fighting with the globe itself
         }
         return mesh;
     }
@@ -459,6 +460,7 @@ function featuresToThree(features, options, context) {
             mesh.rotateZ(-Math.PI);
             mesh.rotateZ(-Math.PI * 0.5);    
             mesh.scale.y = -1.0;  
+            mesh.position.z += 2.0;
         }
 
         group.add(mesh);
