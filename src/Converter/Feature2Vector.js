@@ -432,9 +432,6 @@ function featureToMesh(feature, options, context) {
 }
 
 function featuresToThree(features, options, context) {
-
-
-    console.log(context.zoom);
     
     if (!features || features.length == 0) { return; }
 
@@ -476,10 +473,10 @@ function featuresToThree(features, options, context) {
     // repositioning to grid coordinates
     // scaling to tile size
     // 1.15 is almost perfect with small overlap on zoom 13
-    // group.scale.x *= 1.12;
+    // group.scale.x *= 1.12; ;
     // group.scale.y *= 1.12;
     const scaleFactor = 0.035;
-    const scaleBy = scaleFactor * Math.pow(2.0, (18 - context.zoom));
+    const scaleBy = scaleFactor * 2.0 ** (18 - context.zoom);
     group.scale.x *= scaleBy;
     group.scale.y *= scaleBy; 
 
@@ -487,16 +484,16 @@ function featuresToThree(features, options, context) {
     // appears to be set to null so I cant get them??
     // group.translateX(-2446.0);
     // group.translateY(2446.0);
-    const transOffset = 76.0 * Math.pow(2.0, 18 - context.zoom);
-    console.log(transOffset);
+    const transFactor = 76.0;
+    const transOffset = transFactor * 2.0 ** (18 - context.zoom);
     group.translateX(-transOffset);
     group.translateY(transOffset);    
     group.translateZ(0.5);
     // group.position.z += 2.0; // hotfix to prevent z fighting with the globe itself
     // console.log(group);
     // console.log(group.parent);
-    console.log(scaleBy);
-    console.log(transOffset);
+    // console.log(scaleBy);
+    // console.log(transOffset);
     
     return group;
 }
