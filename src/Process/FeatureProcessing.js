@@ -28,6 +28,9 @@ function assignLayer(object, layer) {
 
 export default {
     update(context, layer, node) {
+
+        // console.log(layer);
+
         if (!node.parent && node.children.length) {
             // if node has been removed dispose three.js resource
             ObjectRemovalHelper.removeChildrenAndCleanupRecursively(layer, node);
@@ -54,11 +57,10 @@ export default {
         const extentsDestination = node.getExtentsByProjection(layer.source.crs);
         const zoomDest = extentsDestination[0].zoom;
         // check if it's tile level is equal to display level layer.
-        if (zoomDest < layer.zoom.min) {
+        if (zoomDest < node.level) {
             return;
         }
 
-        // default zoom is near 6
         if (zoomDest != 3) { return; }
 
         // check if there's data in extent tile.
@@ -97,7 +99,6 @@ export default {
                     ObjectRemovalHelper.removeChildrenAndCleanupRecursively(layer, result);
                     return;
                 }
-
                 node.add(result);
                 node.updateMatrixWorld();
             } else {

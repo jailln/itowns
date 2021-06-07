@@ -432,6 +432,8 @@ function featureToMesh(feature, options, context) {
 }
 
 function featuresToThree(features, options, context) {
+
+    // console.log(context);
     
     if (!features || features.length == 0) { return; }
 
@@ -455,6 +457,7 @@ function featuresToThree(features, options, context) {
     const group = new THREE.Group();
 
     for (const feature of features) {
+        // console.log(feature);
         coord.crs = feature.crs;
         coord.setFromValues(0, 0, 0);
         const mesh = featureToMesh(feature, options, context);
@@ -496,6 +499,7 @@ function featuresToThree(features, options, context) {
     // console.log(transOffset);
     
     return group;
+
 }
 
 // const vector3 = new THREE.Vector3();
