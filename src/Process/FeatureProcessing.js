@@ -59,7 +59,7 @@ export default {
         }
 
         // 13 is the best zoom with no scaling
-        if (zoomDest != 13) { return; }
+        if (zoomDest != 18) { return; }
 
         // check if there's data in extent tile.
         if (!this.source.extentInsideLimit(node.extent, zoomDest) ||

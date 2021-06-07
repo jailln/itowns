@@ -49,7 +49,7 @@
             setupLoadingScreen(viewerDiv, view);
 
             var mvtSource = new itowns.VectorTilesSource({
-                accessToken: 'pk.eyJ1IjoiZ2Nob3F1ZXV4IiwiYSI6ImNqcnc4cjIwajA5ZHQ0OW5oMzBpb3dlaTMifQ.MVueqWYTZYHzjfxBywxiZw',
+                // accessToken: 'pk.eyJ1IjoiZ2Nob3F1ZXV4IiwiYSI6ImNqcnc4cjIwajA5ZHQ0OW5oMzBpb3dlaTMifQ.MVueqWYTZYHzjfxBywxiZw',
                 // style: 'mapbox://styles/mapbox/streets-v11',
                 style: 'https://wxs.ign.fr/an7nvfzojv5wa96dsga5nk8w/static/vectorTiles/styles/PLAN.IGN/standard.json',
                 // style: 'https://raw.githubusercontent.com/Oslandia/postile-openmaptiles/master/style.json',
@@ -80,6 +80,7 @@
             var mvtLayer = new itowns.ColorLayer('MVT', {
                 source: mvtSource,
                 // addLabelLayer: true,
+                opacity: 0.5,
             });
 
             view.addLayer(mvtLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));

@@ -432,6 +432,10 @@ function featureToMesh(feature, options, context) {
 }
 
 function featuresToThree(features, options, context) {
+
+
+    console.log(context.zoom);
+    
     if (!features || features.length == 0) { return; }
 
     if (features.length == 1) {
@@ -439,6 +443,8 @@ function featuresToThree(features, options, context) {
         coord.setFromValues(0, 0, 0);
         const mesh = featureToMesh(features[0], options, context);
 
+        // will need to change this like the section before the return of three.group
+        // do a function tbh instead of doing this 2 times 
         if (features[0].altitude) {
             mesh.position.z = features[0].altitude.min == Infinity ? 0 : features[0].altitude.min;
             mesh.rotateZ(-Math.PI);    
@@ -470,18 +476,28 @@ function featuresToThree(features, options, context) {
     // repositioning to grid coordinates
     // scaling to tile size
     // 1.15 is almost perfect with small overlap on zoom 13
-    group.scale.x *= 1.15;
-    group.scale.y *= 1.15;
+    // group.scale.x *= 1.12;
+    // group.scale.y *= 1.12;
+    const scaleFactor = 0.035;
+    const scaleBy = scaleFactor * Math.pow(2.0, (18 - context.zoom));
+    group.scale.x *= scaleBy;
+    group.scale.y *= scaleBy; 
 
     // these are values compied from the parent tile but parent tile 
     // appears to be set to null so I cant get them??
-    group.translateX(-2446.0);
-    group.translateY(2446.0);
+    // group.translateX(-2446.0);
+    // group.translateY(2446.0);
+    const transOffset = 76.0 * Math.pow(2.0, 18 - context.zoom);
+    console.log(transOffset);
+    group.translateX(-transOffset);
+    group.translateY(transOffset);    
     group.translateZ(0.5);
     // group.position.z += 2.0; // hotfix to prevent z fighting with the globe itself
+    // console.log(group);
     // console.log(group.parent);
-    // console.log(group.parent);
-
+    console.log(scaleBy);
+    console.log(transOffset);
+    
     return group;
 }
 
