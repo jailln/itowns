@@ -432,8 +432,6 @@ function featureToMesh(feature, options, context) {
 }
 
 function featuresToThree(features, options, context) {
-
-    // console.log(context);
     
     if (!features || features.length == 0) { return; }
 
@@ -457,7 +455,6 @@ function featuresToThree(features, options, context) {
     const group = new THREE.Group();
 
     for (const feature of features) {
-        // console.log(feature);
         coord.crs = feature.crs;
         coord.setFromValues(0, 0, 0);
         const mesh = featureToMesh(feature, options, context);
@@ -473,31 +470,25 @@ function featuresToThree(features, options, context) {
     group.rotateZ(-Math.PI * 0.5); 
     group.rotateZ(-Math.PI * 0.5); // turn 90 degrees moire CW in 2D (bounding boxes are also rotated)
     group.scale.y = -1.0;  
-    // repositioning to grid coordinates
+
+
+
     // scaling to tile size
-    // 1.15 is almost perfect with small overlap on zoom 13
-    // group.scale.x *= 1.12; ;
-    // group.scale.y *= 1.12;
     const scaleFactor = 0.036;
-    const scaleBy = scaleFactor * 2.0 ** (18 - context.zoom);
+    let scaleBy = scaleFactor * 2.0 ** (18 - context.zoom);
+    const bufferCorrection = 1.037; // buffer correction au pif
+    scaleBy *= bufferCorrection;
     group.scale.x *= scaleBy;
     group.scale.y *= scaleBy; 
 
-    // these are values compied from the parent tile but parent tile 
-    // appears to be set to null so I cant get them??
-    // group.translateX(-2446.0);
-    // group.translateY(2446.0);
+    // repositioning to grid coordinates
     const transFactor = 76.0;
     const transOffset = transFactor * 2.0 ** (18 - context.zoom);
     group.translateX(-transOffset);
     group.translateY(transOffset);    
-    group.translateZ(context.zoom * 2);
-    // group.position.z += 2.0; // hotfix to prevent z fighting with the globe itself
-    // console.log(group);
-    // console.log(group.parent);
-    // console.log(scaleBy);
-    // console.log(transOffset);
-    
+    group.translateZ(context.zoom * 2); // hot fix for tiling 
+
+
     return group;
 
 }

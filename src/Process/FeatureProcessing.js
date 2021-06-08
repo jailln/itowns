@@ -57,7 +57,7 @@ export default {
         const extentsDestination = node.getExtentsByProjection(layer.source.crs);
         const zoomDest = extentsDestination[0].zoom;
         // check if it's tile level is equal to display level layer.
-        if (zoomDest < node.level) {
+        if (zoomDest > node.level) {            
             return;
         }
 
@@ -99,7 +99,6 @@ export default {
                     ObjectRemovalHelper.removeChildrenAndCleanupRecursively(layer, result);
                     return;
                 }
-                console.log(node);
                 node.add(result);
                 node.updateMatrixWorld();
             } else {
