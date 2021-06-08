@@ -61,7 +61,7 @@ export default {
             return;
         }
 
-        if (zoomDest != 3) { return; }
+        // if (zoomDest != 3) { return; }
 
         // check if there's data in extent tile.
         if (!this.source.extentInsideLimit(node.extent, zoomDest) ||
@@ -99,6 +99,7 @@ export default {
                     ObjectRemovalHelper.removeChildrenAndCleanupRecursively(layer, result);
                     return;
                 }
+                console.log(node);
                 node.add(result);
                 node.updateMatrixWorld();
             } else {

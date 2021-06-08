@@ -478,7 +478,7 @@ function featuresToThree(features, options, context) {
     // 1.15 is almost perfect with small overlap on zoom 13
     // group.scale.x *= 1.12; ;
     // group.scale.y *= 1.12;
-    const scaleFactor = 0.035;
+    const scaleFactor = 0.036;
     const scaleBy = scaleFactor * 2.0 ** (18 - context.zoom);
     group.scale.x *= scaleBy;
     group.scale.y *= scaleBy; 
@@ -491,7 +491,7 @@ function featuresToThree(features, options, context) {
     const transOffset = transFactor * 2.0 ** (18 - context.zoom);
     group.translateX(-transOffset);
     group.translateY(transOffset);    
-    group.translateZ(0.5);
+    group.translateZ(context.zoom * 2);
     // group.position.z += 2.0; // hotfix to prevent z fighting with the globe itself
     // console.log(group);
     // console.log(group.parent);
