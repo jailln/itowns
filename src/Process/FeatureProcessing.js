@@ -57,8 +57,9 @@ export default {
         const extentsDestination = node.getExtentsByProjection(layer.source.crs);
         const zoomDest = extentsDestination[0].zoom;
         // check if it's tile level is equal to display level layer.
+        // this line breaks 3D so maybe a good start for implementing tiling in 3D ?
         if (zoomDest > node.level) {            
-            return;
+            // return;
         }
 
         // if (zoomDest != 3) { return; }

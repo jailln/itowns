@@ -466,9 +466,7 @@ function featuresToThree(features, options, context) {
     }
 
     // Rotation & flip
-    group.rotateZ(-Math.PI);
-    group.rotateZ(-Math.PI * 0.5); 
-    group.rotateZ(-Math.PI * 0.5); // turn 90 degrees moire CW in 2D (bounding boxes are also rotated)
+    // group.rotateZ(-Math.PI * 0.5); // turn 90 degrees moire CW in 3D (bounding boxes are also rotated)
     group.scale.y = -1.0;  
 
 
