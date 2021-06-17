@@ -363,8 +363,10 @@ class TiledGeometryLayer extends GeometryLayer {
                 for (const child of children) {
                     node.add(child);
                     child.updateMatrixWorld(true);
-                }
-
+                }   
+                // ============================
+                // console.log(node);
+                // ============================
                 node.pendingSubdivision = false;
                 context.view.notifyChange(node, false);
             }, (err) => {

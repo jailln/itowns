@@ -55,6 +55,8 @@ class OBBHelper extends THREE.Box3Helper {
         }
 
         this.quaternion.copy(this.obb.quaternion);
+        // for some reason bounding boxes are flipped 90 degrees in 2D
+        this.rotateZ(-Math.PI / 2);
 
         this.obb.box3D.getCenter(this.position).applyQuaternion(this.quaternion).add(this.obb.position);
 

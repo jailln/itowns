@@ -29,15 +29,21 @@ function assignLayer(object, layer) {
 export default {
     update(context, layer, node) {
 
-        // console.log(layer);
+/** 
+        for (const gr of node.parent.children) {
 
+            if (gr.type == 'Group') {
+                //gr.visible = false;
+            }
+        }
+*/
         if (!node.parent && node.children.length) {
             // if node has been removed dispose three.js resource
             ObjectRemovalHelper.removeChildrenAndCleanupRecursively(layer, node);
             return;
         }
         if (!node.visible) {
-            return;
+           return;
         }
 
         if (node.layerUpdateState[layer.id] === undefined) {
@@ -46,23 +52,31 @@ export default {
             return;
         }
 
+
+        // console.log(node.children.filter(n => n.layer == layer));
         const features = node.children.filter(n => n.layer == layer);
 
         if (features.length > 0) {
+                features.forEach((feature) => {
+                    feature.visible = node.material.visible;
+            });
             return features;
         }
         
-        // console.log(layer);
+        
 
         const extentsDestination = node.getExtentsByProjection(layer.source.crs);
         const zoomDest = extentsDestination[0].zoom;
+
+        node.children.filter(n => n.level == zoomDest);
+
         // check if it's tile level is equal to display level layer.
         // this line breaks 3D so maybe a good start for implementing tiling in 3D ?
         if (zoomDest > node.level) {            
             // return;
         }
 
-        // if (zoomDest != 3) { return; }
+        // if (zoomDest != 10) { return; }
 
         // check if there's data in extent tile.
         if (!this.source.extentInsideLimit(node.extent, zoomDest) ||

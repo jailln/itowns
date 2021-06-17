@@ -466,7 +466,7 @@ function featuresToThree(features, options, context) {
     }
 
     // Rotation & flip
-    // group.rotateZ(-Math.PI * 0.5); // turn 90 degrees moire CW in 3D (bounding boxes are also rotated)
+    // group.rotateZ(Math.PI * 0.5); // turn 90 degrees moire CW in 3D (bounding boxes are also rotated)
     group.scale.y = -1.0;  
 
 
@@ -475,6 +475,7 @@ function featuresToThree(features, options, context) {
     const scaleFactor = 0.036;
     let scaleBy = scaleFactor * 2.0 ** (18 - context.zoom);
     const bufferCorrection = 1.037; // buffer correction au pif
+    // const bufferCorrection = 1.0;
     scaleBy *= bufferCorrection;
     group.scale.x *= scaleBy;
     group.scale.y *= scaleBy; 
@@ -484,9 +485,9 @@ function featuresToThree(features, options, context) {
     const transOffset = transFactor * 2.0 ** (18 - context.zoom);
     group.translateX(-transOffset);
     group.translateY(transOffset);    
-    group.translateZ(context.zoom * 2); // hot fix for tiling 
+    // group.translateZ(context.zoom * 2); // hot fix for tiling, removed now that the tiling works but can make a come back potentially        
 
-
+    // console.log(group);
     return group;
 
 }

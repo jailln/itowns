@@ -412,6 +412,8 @@ class View extends THREE.EventDispatcher {
      * @param {boolean} needsRedraw - indicates if notified change requires a full scene redraw.
      */
     notifyChange(changeSource = undefined, needsRedraw = true) {
+        // ==================
+        console.log(changeSource);
         if (changeSource) {
             this._changeSources.add(changeSource);
             if ((changeSource.isTileMesh || changeSource.isCamera)) {
