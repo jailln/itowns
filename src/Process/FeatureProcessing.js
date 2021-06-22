@@ -29,6 +29,9 @@ function assignLayer(object, layer) {
 export default {
     update(context, layer, node) {
 
+        // console.log(context.camera.camera3D.position.z); // so this is how you get z at least only wat I found so far
+        // console.log(context.view.controls.camera.position.z);
+
 /** 
         for (const gr of node.parent.children) {
 
@@ -56,6 +59,7 @@ export default {
         // console.log(node.children.filter(n => n.layer == layer));
         const features = node.children.filter(n => n.layer == layer);
 
+    
         if (features.length > 0) {
                 features.forEach((feature) => {
                     feature.visible = node.material.visible;

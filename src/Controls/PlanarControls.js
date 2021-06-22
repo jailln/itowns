@@ -158,9 +158,9 @@ export const PLANAR_CONTROL_EVENT = {
  * parameter.
  * @param   {number}        [options.autoTravelTimeDist=20000]  Maximum travel distance for animated travel with the
  * `auto` parameter.
- * @param   {number}        [options.smartTravelHeightMin=75]     Minimum height above ground reachable after a smart
+ * @param   {number}        [options.smartTravelHeightMin=20]     Minimum height above ground reachable after a smart
  * travel.
- * @param   {number}        [options.smartTravelHeightMax=500]    Maximum height above ground reachable after a smart
+ * @param   {number}        [options.smartTravelHeightMax=20]    Maximum height above ground reachable after a smart
  * travel.
  * @param   {boolean}       [options.instantTravel=false]       If set to true, animated travels will have no duration.
  * @param   {number}        [options.minZenithAngle=0]          The minimum reachable zenith angle for a camera

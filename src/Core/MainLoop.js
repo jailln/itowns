@@ -63,7 +63,7 @@ function updateElements(context, geometryLayer, elements) {
         // and then update Debug.js:addGeometryLayerDebugFeatures
         const newElementsToUpdate = geometryLayer.update(context, geometryLayer, element);
 
-        console.log(element);
+        // console.log(element);
         const sub = geometryLayer.getObjectToUpdateForAttachedLayers(element);
 
         if (sub) {
@@ -83,7 +83,7 @@ function updateElements(context, geometryLayer, elements) {
                     }
                 }
             } else if (sub.elements) {
-                console.log(sub);
+                // console.log(sub);
                 for (let i = 0; i < sub.elements.length; i++) {
                     if (!(sub.elements[i].isObject3D)) {
                         throw new Error(`

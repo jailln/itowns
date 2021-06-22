@@ -413,7 +413,7 @@ class View extends THREE.EventDispatcher {
      */
     notifyChange(changeSource = undefined, needsRedraw = true) {
         // ==================
-        console.log(changeSource);
+        // console.log(changeSource);
         if (changeSource) {
             this._changeSources.add(changeSource);
             if ((changeSource.isTileMesh || changeSource.isCamera)) {

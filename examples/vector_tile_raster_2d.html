@@ -24,7 +24,6 @@
             // Define geographic extent: CRS, min/max X, min/max Y
             var extent = new itowns.Extent(
                 'EPSG:3857',
-                // -635956.075333, 6721566.519285, 1015083.735627, 5329801.108269);
                 -20037508.342789244, 20037508.342789244, -20037508.342789255, 20037508.342789244);
 
             // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
@@ -40,7 +39,7 @@
                     // We want to keep the rotation disabled, to only have a view from the top
                     enableRotation: false,
                     // Don't zoom too much on smart zoom
-                    smartTravelHeightMax: 100000,
+                    smartTravelHeightMax: 50000, //changed from 100000
                 },
                 placement: new itowns.Extent('EPSG:4326', -6, 6, 40, 50)
             });
@@ -54,7 +53,8 @@
             var mvtSource = new itowns.VectorTilesSource({
                 // accessToken: 'pk.eyJ1IjoiZ2Nob3F1ZXV4IiwiYSI6ImNqcnc4cjIwajA5ZHQ0OW5oMzBpb3dlaTMifQ.MVueqWYTZYHzjfxBywxiZw',
                 // style: 'mapbox://styles/mapbox/streets-v11',
-                style: 'https://wxs.ign.fr/an7nvfzojv5wa96dsga5nk8w/static/vectorTiles/styles/PLAN.IGN/standard.json',
+                style: 'https://wxs.ign.fr/static/vectorTiles/styles/PLAN.IGN/standard.json',
+                // style: 'https://wxs.ign.fr/an7nvfzojv5wa96dsga5nk8w/static/vectorTiles/styles/PLAN.IGN/standard.json',
                 // style: 'https://raw.githubusercontent.com/Oslandia/postile-openmaptiles/master/style.json',
                 // eslint-disable-next-line no-template-curly-in-string
                 // url: 'https://osm.oslandia.io/data/v3/${z}/${x}/${y}.pbf',
@@ -82,12 +82,12 @@
 
             var mvtLayer = new itowns.ColorLayer('MVT', {
                 source: mvtSource,
-                // addLabelLayer: true,
-                opacity: 0.5,
+                addLabelLayer: false,
+                // opacity: 0.5,
             });
 
             // putting the same layer in color under the geolayer with opacity 100% is a solutin to artifacts but its not good like its one more layer for nothing
-            view.addLayer(mvtLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            // view.addLayer(mvtLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
 
             var vectorMeshLayer = new itowns.GeometryLayer('Vectors', new itowns.THREE.Group(), {
                 source: mvtSource,
@@ -102,22 +102,62 @@
                 // opacity: 0.0,
             });
 
-            //view.addLayer(vectorMeshLayer);
+            view.addLayer(vectorMeshLayer);
 
-            for (var layer of view.getLayers()) {
-                if (layer.id === 'Vectors') {
-                    layer.whenReady.then( function _(layer) {
-                        var gui = debug.GeometryDebug.createGeometryDebugUI(menuGlobe.gui, view, layer);
-                        //debug.GeometryDebug.addMaterialLineWidth(gui, view, layer, 1, 10);
-                        debug.GeometryDebug.addWireFrameCheckbox(gui, view, layer);
-                        //ebug.GeometryDebug.addMaterialSize(gui, view, layer, 1, 200);
-                    });
-                }
+            vectorMeshLayer.whenReady.then( function _(layer) {
+                    var gui = debug.GeometryDebug.createGeometryDebugUI(menuGlobe.gui, view, layer);
+                    //debug.GeometryDebug.addMaterialLineWidth(gui, view, layer, 1, 10);
+                    debug.GeometryDebug.addWireFrameCheckbox(gui, view, layer);
+                    //ebug.GeometryDebug.addMaterialSize(gui, view, layer, 1, 200);
+            });
+
+            // camera animations for redraw
+            var time = 50000;
+            var pathTravel = [];
+            
+            // zoom to lyon
+            pathTravel.push({ coord: new itowns.Coordinates('EPSG:4326', 4.8, 45.7), range: 12000, time: time * 0.5 });
+            pathTravel.push({ time: time * 0.1 });
+            pathTravel.push({ coord: new itowns.Coordinates('EPSG:4326', 4.1, 45.7), range: 12000, time: time * 0.5 });
+            /**
+            pathTravel.push({ range: 13932, time: time * 0.2 });
+            pathTravel.push({ range: 70000, time: time * 0.2});
+            pathTravel.push({ coord: new itowns.Coordinates('EPSG:4326', 7.0193, 43.991), time: time });
+            pathTravel.push({ range: 10414, time: time * 0.2 });
+            pathTravel.push({ range: 60000, time: time * 0.2 });
+            pathTravel.push({ coord: new itowns.Coordinates('EPSG:4326', 9.114, 41.973), time: time });
+            pathTravel.push({ range: 16601, time: time * 0.2 });
+            */
+
+            function travel() {
+                var camera = view.camera.camera3D;
+                return itowns.CameraUtils
+                    .sequenceAnimationsToLookAtTarget(view, camera, pathTravel);
             }
 
             // Request redraw
             view.notifyChange(true);
             debug.createTileDebugUI(menuGlobe.gui, view);
+
+            // view.controls.initiateSmartTravel();
+
+            // Press T to start camera anim 
+            // for some reason cant get this to start the travel
+            /**
+            document.addEventListener("keydown", function init(event) {
+                if (event.key === "t") {
+                    console.log(event);
+                    travel().then(travel).catch(console.error);
+                }
+            });
+            */
+
+            view.addEventListener(itowns.VIEW_EVENTS.INITIALIZED, function init() {
+                // eslint-disable-next-line no-console
+                console.info('Start Travel');
+                // travel().then(travel).catch(console.error);
+            });
+
         </script>
     </body>
 </html>
