@@ -35,6 +35,7 @@ export { default as ShaderChunk } from 'Renderer/Shader/ShaderChunk';
 export { getMaxColorSamplerUnitsCount } from 'Renderer/LayeredMaterial';
 export { default as Capabilities } from 'Core/System/Capabilities';
 export { CAMERA_TYPE } from 'Renderer/Camera';
+export { default as Feature2Vector } from 'Converter/Feature2Vector';
 
 // Internal itowns format
 export { default as Feature, FeatureCollection, FeatureGeometry, FEATURE_TYPES } from 'Core/Feature';

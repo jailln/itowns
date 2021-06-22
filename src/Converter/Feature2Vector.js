@@ -441,6 +441,9 @@ function featuresToThree(features, options, context) {
 
         if (features[0].altitude) {
             mesh.position.z = features[0].altitude.min == Infinity ? 0 : features[0].altitude.min;
+            mesh.rotateZ(-Math.PI);    
+            mesh.rotateZ(-Math.PI * 0.5);    
+            mesh.scale.y = -1.0;      
         }
         return mesh;
     }
@@ -453,6 +456,9 @@ function featuresToThree(features, options, context) {
         const mesh = featureToMesh(feature, options, context);
         if (feature.altitude) {
             mesh.position.z = feature.altitude.min == Infinity ? feature.altitude.min : 0;
+            mesh.rotateZ(-Math.PI);
+            mesh.rotateZ(-Math.PI * 0.5);    
+            mesh.scale.y = -1.0;  
         }
 
         group.add(mesh);
@@ -464,7 +470,7 @@ function featuresToThree(features, options, context) {
 // const vector3 = new THREE.Vector3();
 
 /**
- * @module Feature2Mesh
+ * @module Feature2Vector
  */
 export default {
     /**

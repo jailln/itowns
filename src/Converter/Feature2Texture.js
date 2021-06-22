@@ -253,7 +253,7 @@ export default {
                     ctx.fillStyle = backgroundColor.getStyle();
                     ctx.fillRect(0, 0, sizeTexture, sizeTexture);
                 }
-                ctx.globalCompositeOperation = style.globalCompositeOperation || 'source-over';
+                // ctx.globalCompositeOperation = style.globalCompositeOperation || 'source-over';
                 ctx.imageSmoothingEnabled = false;
                 ctx.lineJoin = 'round';
 
@@ -263,6 +263,7 @@ export default {
                 featureExtent.applyMatrix4(collection.matrixWorldInverse);
 
                 // compute matrix transformation `world2texture` to convert coordinates to texture coordinates
+                // CHECK THIS OUT
                 if (collection.isInverted) {
                     worldTextureOrigin.set(extent.west, extent.north, 0);
                     canvasSize.set(ctx.canvas.width, -ctx.canvas.height, 1.0);
@@ -299,7 +300,6 @@ export default {
         } else {
             texture = new THREE.Texture();
         }
-
         return texture;
     },
 };

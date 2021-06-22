@@ -131,7 +131,7 @@ class GeometryLayer extends Layer {
         Object.defineProperty(this.zoom, 'max', {
             value: Infinity,
             writable: false,
-        });
+        }); 
 
         // Feature options
         this.filteringExtent = !this.source.isFileSource;

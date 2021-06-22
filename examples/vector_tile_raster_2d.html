@@ -65,12 +65,40 @@
                 },
             });
 
+            function setAltitude(properties) {
+                return 0;
+            }
+
+            function setExtrusion(properties) {
+                return 0;
+            }
+
+            function setColor(properties) {
+                return new itowns.THREE.Color(0xaaaaaa);
+            }
+
             var mvtLayer = new itowns.ColorLayer('MVT', {
                 source: mvtSource,
                 // addLabelLayer: true,
             });
 
             view.addLayer(mvtLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+
+            var vectorMeshLayer = new itowns.GeometryLayer('Vectors', new itowns.THREE.Group(), {
+                source: mvtSource,
+                update: itowns.FeatureProcessing.update,
+                convert: itowns.Feature2Mesh.convert({
+                    altitude: setAltitude,
+                    extrude: setExtrusion,
+                    color: setColor
+                }),
+                zoom: { min: 14 },
+            });
+
+            console.log(mvtLayer);
+            
+            console.log(vectorMeshLayer);
+            view.addLayer(vectorMeshLayer);
 
             // Request redraw
             view.notifyChange(true);
