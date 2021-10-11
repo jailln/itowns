@@ -120,6 +120,11 @@ function toFeatureType(jsonType) {
 const keyProperties = ['type', 'geometry', 'properties'];
 
 function jsonFeatureToFeature(crsIn, json, collection) {
+    if (!json.geometry || !json.geometry.type) {
+        console.warn('No geometry provided');
+        // throw new Error(No geometry provided ${json});
+        return null;
+    }
     const jsonType = json.geometry.type.toLowerCase();
     const featureType = toFeatureType(jsonType);
     const feature = collection.requestFeatureByType(featureType);
