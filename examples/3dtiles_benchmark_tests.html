@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Itowns - 3d-tiles example</title>
+
+        <meta charset="UTF-8">
+        <link rel="stylesheet" type="text/css" href="css/example.css">
+        <link rel="stylesheet" type="text/css" href="css/LoadingScreen.css">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.6/dat.gui.min.js"></script>
+    </head>
+    <body>
+        <div id="viewerDiv"></div>
+        <div id="description">
+            <p><b>Feature Information:</b></p>
+            <div id="featureInfo"></div>
+        </div>
+        <script src="js/GUI/GuiTools.js"></script>
+        <script src="../dist/itowns.js"></script>
+        <script src="js/GUI/LoadingScreen.js"></script>
+        <script src="../dist/debug.js"></script>
+        <script src="js/3dTilesHelper.js"></script>
+        <script type="text/javascript">
+            /* global itowns,document,GuiTools*/
+            // Lille
+            var placement = {
+                coord: new itowns.Coordinates('EPSG:4326', 3.057256, 50.629250, 0),
+                range: 4000,
+                tilt: 22,
+                heading: 180
+            }
+
+            // Strasbourg
+            // var placement = {
+            //     coord: new itowns.Coordinates('EPSG:4326', 7.750000, 48.580002, 0),
+            //     range: 4000,
+            //     tilt: 22,
+            //     heading: 180
+            // }
+
+            // iTowns namespace defined here
+            var viewerDiv = document.getElementById('viewerDiv');
+
+            var view = new itowns.GlobeView(viewerDiv, placement);
+            view.camera.camera3D.near = 5;
+            setupLoadingScreen(viewerDiv, view);
+
+            var menuGlobe = new GuiTools('menuDiv', view, 300);
+
+            itowns.Fetcher.json('./layers/JSONLayers/OPENSM.json').then(function _(config) {
+                config.source = new itowns.TMSSource(config.source);
+                var layer = new itowns.ColorLayer('Ortho', config);
+                view.addLayer(layer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            });
+
+            // Create a new Layer 3d-tiles For DiscreteLOD
+            // -------------------------------------------
+            // Lille
+            var lille_b3dm = new itowns.C3DTilesLayer('lille-b3dm', {
+                name: 'lille-b3dm',
+                // sseThreshold: 0.05,
+                source: new itowns.C3DTilesSource({
+                    url: 'http://localhost:8000/tileset.json',
+                }),
+            }, view);
+
+            // Strasbourg
+            // itowns.enableDracoLoader('./libs/draco/');
+            // var lille_b3dm = new itowns.C3DTilesLayer('lille-b3dm', {
+            //     name: 'lille-b3dm',
+            //     // sseThreshold: 0.05,
+            //     source: new itowns.C3DTilesSource({
+            //         url: 'https://3d.strasbourg.eu/CESIUM/DATA/PM3D_2018/3DTiles/EMS_CESIUM.json',
+            //     }),
+            // }, view);
+
+            // add an event for picking the 3D Tiles layer and displaying
+            // information about the picked feature in an html div
+            var pickingArgs = {};
+            pickingArgs.htmlDiv = document.getElementById('featureInfo');
+            pickingArgs.view = view;
+            pickingArgs.layer = lille_b3dm;
+            itowns.View.prototype.addLayer.call(view,
+                lille_b3dm).then(function _() {
+                    window.addEventListener('mousemove',
+                        (event) => fillHTMLWithPickingInfo(event, pickingArgs),false);
+                });
+
+            // Add the UI Debug
+            var d = new debug.Debug(view, menuGlobe.gui);
+            debug.createTileDebugUI(menuGlobe.gui, view, view.tileLayer, d);
+            debug.create3dTilesDebugUI(menuGlobe.gui, view, lille_b3dm, d);
+
+            // Zoom to object
+            function zoomToObject (viewer, object) {
+                // LookAt position of the camera
+                var boundingBox = new itowns.THREE.Box3();
+                boundingBox.setFromObject( object );
+                var center = new itowns.THREE.Vector3();
+                boundingBox.getCenter(center);
+                var size = new itowns.THREE.Vector3();
+                boundingBox.getSize(size);
+
+                // Inspired from initiateSmartTravel... Maybe use this method instead but with the center of the bounding box 
+                // as target Point instead of mouse under cursor?
+                // direction of the movement, projected on xy plane and normalized
+                var dir = new itowns.THREE.Vector3();
+                dir.copy(center).sub(viewer.camera.camera3D.position);
+                dir.z = 0;
+                dir.normalize();
+
+                // Camera position at the end of the travel
+                var targetHeight = size.z; // not sure this is the best value
+                var camPosTarget = new itowns.THREE.Vector3();
+                camPosTarget.copy(center);
+                camPosTarget.add(dir.multiplyScalar(-targetHeight));
+                camPosTarget.z = center.z + targetHeight * 4; // empirical
+
+                viewer.controls.initiateTravel(camPosTarget, 'auto', center, true);
+            };
+        </script>
+    </body>
+</html>
