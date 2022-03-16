@@ -46,14 +46,20 @@ module.exports = () => {
         resolve: {
             modules: [path.resolve(__dirname, 'src'), 'node_modules'],
         },
+        externals: {
+            three: 'THREE',
+            proj4: 'proj4',
+        },
         entry: {
-            itowns: [
-                'core-js',
-                'regenerator-runtime/runtime',
-                'url-polyfill',
-                'whatwg-fetch',
-                './src/MainBundle.js',
-            ],
+            itowns: {
+                import: [
+                    'core-js',
+                    'regenerator-runtime/runtime',
+                    'url-polyfill',
+                    'whatwg-fetch',
+                    './src/Main.js',
+                ],
+            },
             debug: {
                 import: './utils/debug/Main.js',
                 dependOn: 'itowns',
