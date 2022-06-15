@@ -11,6 +11,12 @@ import CameraUtils from 'Utils/CameraUtils';
 import CRS from 'Core/Geographic/Crs';
 import { ellipsoidSizes } from 'Core/Math/Ellipsoid';
 
+import { CatmullRomCurve3, Vector3 } from 'three';
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial';
+import { Line2 } from 'three/examples/jsm/lines/Line2';
+import * as GeometryUtils from 'three/examples/jsm/utils/GeometryUtils';
+
 /**
  * Fires when the view is completely loaded. Controls and view's functions can be called then.
  * @event GlobeView#initialized
@@ -173,6 +179,46 @@ class GlobeView extends View {
 
     getMetersToDegrees(meters = 1) {
         return THREE.MathUtils.radToDeg(2 * Math.asin(meters / (2 * ellipsoidSizes.x)));
+    }
+
+    addSimpleFatLine() {
+        const positions = [];
+        const colors = [];
+
+        const points = GeometryUtils.hilbert3D(new Vector3(0, 0, 0), 20.0, 1, 0, 1, 2, 3, 4, 5, 6, 7);
+
+        var spline = new CatmullRomCurve3(points);
+        var divisions = Math.round(12 * points.length);
+        var point = new Vector3();
+        var color = new THREE.Color();
+
+        for (var i = 0, l = divisions; i < l; i++) {
+            var t = i / l;
+
+            spline.getPoint(t, point);
+            point.addVectors(point, new Vector3(4440296.97607178, 379900.41246482014, 4547602.947867432));
+            positions.push(point.x, point.y, point.z);
+
+            color.setHSL(t, 1.0, 0.5);
+            colors.push(color.r, color.g, color.b);
+        }
+
+        var geometry = new LineGeometry();
+        geometry.setPositions(positions);
+        geometry.setColors(colors);
+
+        var matLine = new LineMaterial({
+            color: 0xffffff,
+            linewidth: 5, // in world units with size attenuation, pixels otherwise
+            vertexColors: true,
+            dashed: false,
+            alphaToCoverage: true,
+        });
+
+        var line = new Line2(geometry, matLine);
+        line.computeLineDistances();
+        line.scale.set(1, 1, 1);
+        this.scene.add(line);
     }
 }
 
