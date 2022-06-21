@@ -317,6 +317,83 @@ function featureToLine(feature, options) {
     return lines;
 }
 
+function featureToLine2(feature, options) {
+    const ptsIn = feature.vertices;
+    const normals = feature.normals;
+    // const count = ptsIn.length / 3;
+
+    // TODO: manage batchIds
+    // const batchIds = options.batchId ?  new Uint32Array(count) : undefined;
+    // let featureId = 0;
+
+    let vertices;
+    const zTranslation =  options.GlobalZTrans - feature.altitude.min;
+    if (zTranslation != 0) {
+        vertices = new Float32Array(ptsIn.length);
+        coordinatesToVertices(ptsIn, normals, vertices, zTranslation);
+    } else {
+        vertices = new Float32Array(ptsIn);
+    }
+    // const geom = new THREE.BufferGeometry();
+    // geom.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+
+    const lines = new THREE.Group();
+
+    // TODO CREATE material for each feature
+    options.lineMaterial.linewidth = feature.style.stroke.width;
+    const globals = { stroke: true };
+    if (feature.geometries.length > 1) {
+        // Multi line case
+        for (const geometry of feature.geometries) {
+            const context = { globals, properties: () => geometry.properties };
+            const style = feature.style.drawingStylefromContext(context);
+
+            const start = geometry.indices[0].offset;
+            // To avoid integer overflow with indice value (16 bits)
+            if (start > 0xffff) {
+                console.warn('Feature to Line: integer overflow, too many points in lines');
+                break;
+            }
+            const count = geometry.indices[0].count;
+            const end = start + count;
+
+            const geom = new THREE.BufferGeometry();
+            const geomVertices = vertices.slice(start * 3, end * 3);
+            geom.setAttribute('position', new THREE.BufferAttribute(geomVertices, 3));
+
+            const colors = new Uint8Array(count);
+            fillColorArray(colors, count, toColor(style.stroke.color), start);
+            geom.setAttribute('color', new THREE.BufferAttribute(colors, 3, true));
+            // TODO: manager batch ids
+            // if (batchIds) { geom.setAttribute('batchId', new THREE.BufferAttribute(batchIds, 1)); }
+
+            const line = new THREE.Line(geom, options.lineMaterial);
+            lines.add(line);
+            // TODO: manage batch ids
+            // if (batchIds) {
+            //     const id = options.batchId(geometry.properties, featureId);
+            //     fillBatchIdArray(id, batchIds, start, end);
+            //     featureId++;
+            // }
+        }
+    } else {
+        // TODO: single line case
+        console.log('single line case');
+        // const context = { globals, properties: () => feature.geometries[0].properties };
+        // const style = feature.style.drawingStylefromContext(context);
+
+        // fillColorArray(colors, count, toColor(style.stroke.color));
+        // geom.setAttribute('color', new THREE.BufferAttribute(colors, 3, true));
+        // if (batchIds) {
+        //     const id = options.batchId(feature.geometries[0].properties, featureId);
+        //     fillBatchIdArray(id, batchIds, 0, count);
+        //     geom.setAttribute('batchId', new THREE.BufferAttribute(batchIds, 1));
+        // }
+        // lines = new THREE.Line(geom, options.lineMaterial);
+    }
+    return lines;
+}
+
 function featureToPolygon(feature, options) {
     const ptsIn = feature.vertices;
     const normals = feature.normals;
@@ -499,7 +576,7 @@ function featureToMesh(feature, options) {
             mesh = featureToPoint(feature, options);
             break;
         case FEATURE_TYPES.LINE:
-            mesh = featureToLine(feature, options);
+            mesh = featureToLine2(feature, options);
             break;
         case FEATURE_TYPES.POLYGON:
             if (feature.style.fill.extrusion_height) {
@@ -512,8 +589,10 @@ function featureToMesh(feature, options) {
     }
 
     // set mesh material
-    mesh.material.vertexColors = true;
-    mesh.material.color = new THREE.Color(0xffffff);
+    if (mesh.material) {
+        mesh.material.vertexColors = true;
+        mesh.material.color = new THREE.Color(0xffffff);
+    }
 
     mesh.feature = feature;
     mesh.position.z = feature.altitude.min - options.GlobalZTrans;
