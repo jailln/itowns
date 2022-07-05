@@ -1059,7 +1059,7 @@ class View extends THREE.EventDispatcher {
      *
      * @returns {Coordinates}   The world {@link Coordinates} at the given view coordinates.
      */
-    pickCoordinates(mouse, target = new Coordinates(this.tileLayer.extent.crs)) {
+    pickCoordinates(mouse, target = new Coordinates(this.referenceCrs)) {
         if (mouse instanceof Event) {
             this.eventToViewCoords(mouse);
         } else if (mouse && mouse.x !== undefined && mouse.y !== undefined) {
@@ -1072,9 +1072,7 @@ class View extends THREE.EventDispatcher {
         }
 
         this.getPickingPositionFromDepth(_eventCoords, positionVector);
-        coordinates.crs = this.referenceCrs;
-        coordinates.setFromVector3(positionVector);
-        coordinates.as(target.crs, target);
+        target.setFromVector3(positionVector);
 
         return target;
     }
