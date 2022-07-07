@@ -13,8 +13,8 @@ const DEFAULT_OPTIONS = {
 const loader = new THREE.TextureLoader();
 const texture = loader.load('sprites/circle.png'); // TODO: make it configurable and put it on the itowns sample data for the example
 
-const MOVE_POINT_MATERIAL = new THREE.PointsMaterial({ color: 0xff0000, size: 200.0, map: texture, alphaTest: 0.5 });
-const CLICK_POINT_MATERIAL = new THREE.PointsMaterial({ color: 0xffffff, size: 200.0, map: texture, alphaTest: 0.5 });
+const MOVE_POINT_MATERIAL = new THREE.PointsMaterial({ color: 0xff0000, size: 10.0, map: texture, alphaTest: 0.5, sizeAttenuation: false });
+const CLICK_POINT_MATERIAL = new THREE.PointsMaterial({ color: 0xffffff, size: 10.0, map: texture, alphaTest: 0.5, sizeAttenuation: false });
 
 // TODO: rendre paramétrable ce qui trigger la mesure d'élévation (e.g. touche, click)
 
@@ -85,7 +85,7 @@ class ElevationMeasure extends Widget {
 
     onMouseMove(event) {
         const worldCoordinates = this.#view.pickCoordinates(event);
-        worldCoordinates.altitude += 50;
+        worldCoordinates.altitude += 6;
 
         const pointVertices = worldCoordinates.toVector3().toArray();
         const typedPointVertices = new Float32Array(pointVertices);
@@ -110,7 +110,6 @@ class ElevationMeasure extends Widget {
         }
 
         const worldCoordinates = this.#view.pickCoordinates(event);
-        console.log(worldCoordinates);
         worldCoordinates.altitude += 6;
         const pointVertices = worldCoordinates.toVector3().toArray();
         const typedPointVertices = new Float32Array(pointVertices);
@@ -121,15 +120,11 @@ class ElevationMeasure extends Widget {
             this.#clickPoint = new THREE.Points(pointGeom, CLICK_POINT_MATERIAL);
             this.#clickPoint.updateMatrixWorld();
             this.#view.scene.add(this.#clickPoint);
-            // this.#view.notifyChange(true); // TODO: useful ?
         } else {
             const pos = this.#clickPoint.geometry.attributes.position;
             pos.array = typedPointVertices;
             pos.needsUpdate = true;
             this.#clickPoint.updateMatrixWorld();
-            // TODO: useful ?
-            // this.#movePoint.geometry.computeBoundingBox();
-            // this.#movePoint.geometry.computeBoundingSphere();
         }
 
         this.#view.notifyChange(true);
