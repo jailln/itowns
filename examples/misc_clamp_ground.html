@@ -56,21 +56,30 @@
             function addMeshToScene() {
                 // creation of the new mesh (a cylinder)
                 var THREE = itowns.THREE;
-                var geometry = new THREE.CylinderGeometry(0, 10, 60, 8);
-                var material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-                var mesh = new THREE.Mesh(geometry, material);
+            
+                // var geometry = new THREE.CylinderGeometry(0, 10, 60, 8);
+                // var material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                // var mesh = new THREE.Mesh(geometry, material);
 
                 // get the position on the globe, from the camera
                 var cameraTargetPosition = view.controls.getLookAtCoordinate();
+                cameraTargetPosition.altitude += 30;
+                var point4978 = cameraTargetPosition.as('EPSG:4978');
+
+                var typedPointVertices = new Float32Array(point4978.toVector3().toArray());
+                var pointGeom = new THREE.BufferGeometry();
+                pointGeom.setAttribute('position', new THREE.BufferAttribute(typedPointVertices, 3));
+                var material = new THREE.PointsMaterial({ color: 0xff0000, size: 100.0 });
+                var mesh = new THREE.Points(pointGeom, material);
 
                 // position of the mesh
-                var meshCoord = cameraTargetPosition;
-                meshCoord.altitude += 30;
+                // var meshCoord = cameraTargetPosition;
+                // meshCoord.altitude += 30;
 
                 // position and orientation of the mesh
-                mesh.position.copy(meshCoord.as(view.referenceCrs));
-                mesh.lookAt(new THREE.Vector3(0, 0, 0));
-                mesh.rotateX(Math.PI / 2);
+                // mesh.position.copy(meshCoord.as(view.referenceCrs));
+                // mesh.lookAt(new THREE.Vector3(0, 0, 0));
+                // mesh.rotateX(Math.PI / 2);
 
                 // update coordinate of the mesh
                 mesh.updateMatrixWorld();

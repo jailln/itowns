@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import DEMUtils from '../DEMUtils';
 import Widget from './Widget';
 
 const DEFAULT_OPTIONS = {
@@ -9,14 +10,17 @@ const DEFAULT_OPTIONS = {
 };
 
 // TODO: make this configurable
-const MOVE_POINT_MATERIAL = new THREE.PointsMaterial({ color: 0xff0000 });
-const CLICK_POINT_MATERIAL = new THREE.PointsMaterial({ color: 0xffffff });
+const loader = new THREE.TextureLoader();
+const texture = loader.load('sprites/circle.png'); // TODO: make it configurable and put it on the itowns sample data for the example
+
+const MOVE_POINT_MATERIAL = new THREE.PointsMaterial({ color: 0xff0000, size: 200.0, map: texture, alphaTest: 0.5 });
+const CLICK_POINT_MATERIAL = new THREE.PointsMaterial({ color: 0xffffff, size: 200.0, map: texture, alphaTest: 0.5 });
 
 // TODO: rendre paramétrable ce qui trigger la mesure d'élévation (e.g. touche, click)
 
 /**
  * TODO DESC
- * 
+ *
  * @extends Widget
  *
  * @property    {HTMLElement}   domElement      An html div containing the searchbar.
@@ -29,7 +33,7 @@ class ElevationMeasure extends Widget {
     #clickPoint;
 
     /**
-     * 
+     *
      * @param {*} view the iTowns view in which the tool will measure elevation
      * @param {*} options The elevation measurement tool optional configuration
      * @param {HTMLElement} [options.parentElement=view.domElement] The parent HTML container of the div which
@@ -61,26 +65,42 @@ class ElevationMeasure extends Widget {
         this.#active = !this.#active;
         if (this.#active) {
             document.getElementById('widgets-elevation-activation-button').classList.add('widget-button-active');
-            // this.activateTool();
+            this.activateTool();
         } else {
             document.getElementById('widgets-elevation-activation-button').classList.remove('widget-button-active');
-            // this.deactivateTool();
+            this.deactivateTool();
         }
     }
 
     activateTool() {
-        // Create points
-        this.#movePoint = new THREE.Points(null, MOVE_POINT_MATERIAL);
-        this.#clickPoint = new THREE.Points(null, CLICK_POINT_MATERIAL);
-
         // Setup events
-        this.domElement.addEventListener('mousedown', this.onMouseLeftClick);
-        this.domElement.addEventListener('mousemove', this.onMouseMove);
+        window.addEventListener('mousemove', this.onMouseMove.bind(this));
+        window.addEventListener('mousedown', this.onMouseLeftClick.bind(this));
     }
 
     deactivateTool() {
-        // remove events
+        // remove event
         // remove points
+    }
+
+    onMouseMove(event) {
+        const worldCoordinates = this.#view.pickCoordinates(event);
+        worldCoordinates.altitude += 50;
+
+        const pointVertices = worldCoordinates.toVector3().toArray();
+        const typedPointVertices = new Float32Array(pointVertices);
+
+        if (!this.#movePoint) {
+            const pointGeom = new THREE.BufferGeometry();
+            pointGeom.setAttribute('position', new THREE.BufferAttribute(typedPointVertices, 3));
+            this.#movePoint = new THREE.Points(pointGeom, MOVE_POINT_MATERIAL);
+            this.#view.scene.add(this.#movePoint);
+        } else {
+            const pos = this.#movePoint.geometry.attributes.position;
+            pos.array = typedPointVertices;
+            pos.needsUpdate = true;
+        }
+        this.#view.notifyChange();
     }
 
     onMouseLeftClick(event) {
@@ -89,21 +109,34 @@ class ElevationMeasure extends Widget {
             return;
         }
 
-        const picked = this.#view.pickObjectsAt(event);
-        if (picked.length === 0) {
-            console.warn('[[Elevation Measure Widget] No objects found under cursor. Are you trying to measure the sky?');
-            return;
+        const worldCoordinates = this.#view.pickCoordinates(event);
+        console.log(worldCoordinates);
+        worldCoordinates.altitude += 6;
+        const pointVertices = worldCoordinates.toVector3().toArray();
+        const typedPointVertices = new Float32Array(pointVertices);
+
+        if (!this.#clickPoint) {
+            const pointGeom = new THREE.BufferGeometry();
+            pointGeom.setAttribute('position', new THREE.BufferAttribute(typedPointVertices, 3));
+            this.#clickPoint = new THREE.Points(pointGeom, CLICK_POINT_MATERIAL);
+            this.#clickPoint.updateMatrixWorld();
+            this.#view.scene.add(this.#clickPoint);
+            // this.#view.notifyChange(true); // TODO: useful ?
+        } else {
+            const pos = this.#clickPoint.geometry.attributes.position;
+            pos.array = typedPointVertices;
+            pos.needsUpdate = true;
+            this.#clickPoint.updateMatrixWorld();
+            // TODO: useful ?
+            // this.#movePoint.geometry.computeBoundingBox();
+            // this.#movePoint.geometry.computeBoundingSphere();
         }
 
-        console.log('tmp');
+        this.#view.notifyChange(true);
 
-        // conversion 4978
-        // Set position point
-        // display label
-    }
+        const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldCoordinates);
 
-    onMouseMove(event) {
-        // raycast nécessaire ? OU on peut afficher le point direct sur l'écran en supperposition à partir des coordonnées screen?
+        console.log(elevation);
     }
 }
 
