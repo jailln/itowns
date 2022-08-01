@@ -200,6 +200,9 @@ class ElevationMeasure extends Widget {
     }
 
 
+    /**
+     * Callback to render label (called at each frame)
+     */
     renderLabel() {
         this.#labelRenderer.render(this.#view.scene, this.#view.camera.camera3D);
     }
