@@ -54,6 +54,7 @@ class ElevationMeasure extends Widget {
     #movePoint;
     #clickPoint;
     #labelRenderer;
+    #labelObj;
 
     /**
      *
@@ -102,21 +103,13 @@ class ElevationMeasure extends Widget {
         // TODO: create points with visible = false
 
         // Setup threejs label2D renderer
-        this.#labelRenderer = new CSS2DRenderer();
-        this.#labelRenderer.setSize(window.innerWidth, window.innerHeight);
-        this.#labelRenderer.domElement.style.position = 'absolute';
-        this.#labelRenderer.domElement.style.top = '0px';
-        document.body.appendChild(this.#labelRenderer.domElement);
-
-        function renderLabel() {
-            this.#labelRenderer.render(this.#view.scene, this.#view.camera.camera3D);
-        }
-        this.#view.addFrameRequester(MAIN_LOOP_EVENTS.AFTER_RENDER, renderLabel.bind(this));
+        this.initLabel();
     }
 
     deactivateTool() {
         // remove event
         // remove points
+        // remove label stuff
     }
 
     onMouseMove(event) {
@@ -168,19 +161,32 @@ class ElevationMeasure extends Widget {
 
         const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldCoordinates);
         const elevationText = `${elevation.toFixed(2)} m`; // TODO: make the number of decimals configurable + what about the unit ?
-        this.addThreeLabel(elevationText, worldCoordinates.toVector3());
+        this.updateLabel(elevationText, worldCoordinates.toVector3());
     }
 
-    addThreeLabel(textContent, position) {
+    initLabel() {
+        this.#labelRenderer = new CSS2DRenderer();
+        this.#labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        this.#labelRenderer.domElement.style.position = 'absolute';
+        this.#labelRenderer.domElement.style.top = '0px';
+        document.body.appendChild(this.#labelRenderer.domElement);
+
+        function renderLabel() {
+            this.#labelRenderer.render(this.#view.scene, this.#view.camera.camera3D);
+        }
+        this.#view.addFrameRequester(MAIN_LOOP_EVENTS.AFTER_RENDER, renderLabel.bind(this));
+
         const labelDiv = document.createElement('div');
         labelDiv.classList.add('label'); // TODO: make it parametrable
-        labelDiv.textContent = textContent;
+        this.#labelObj = new CSS2DObject(labelDiv);
+        this.#view.scene.add(this.#labelObj);
+    }
 
-        const labelObj = new CSS2DObject(labelDiv);
-        labelObj.position.copy(position);
-        labelObj.translateZ(30); // TODO: depends from point size and crs and zoom? : à faire en css plutot?
-        labelObj.updateMatrixWorld();
-        this.#view.scene.add(labelObj);
+    updateLabel(textContent, position) {
+        this.#labelObj.element.textContent = textContent;
+        this.#labelObj.position.copy(position);
+        this.#labelObj.translateZ(30); // TODO: depends from point size and crs and zoom? : à faire en css plutot? -addLabel> translate en pixels en fonction size point?
+        this.#labelObj.updateMatrixWorld();
     }
 }
 
