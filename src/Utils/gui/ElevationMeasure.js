@@ -11,7 +11,6 @@ const DEFAULT_OPTIONS = {
     placeholder: 'Measure elevation',
 };
 
-// TODO: make this configurable
 const loader = new THREE.TextureLoader();
 const POINT_TEXTURE = loader.load('sprites/circle.png'); // TODO: make it configurable and put it on the itowns sample data for the example (+ possibilité d'avoir une texture différente pour chaque point)
 
@@ -43,12 +42,16 @@ const CLICK_POINT_MATERIAL = new THREE.PointsMaterial({
  * @property    {HTMLElement}   parentElement   The parent HTML container of `this.domElement`.
  */
 class ElevationMeasure extends Widget {
-    #active; // TODO: is it mandatory ?
+    // Internal fields
+    #active;
     #view;
     #movePoint;
     #clickPoint;
     #labelRenderer;
     #labelObj;
+
+    // Config options
+    decimals = 2;
 
     /**
      *
@@ -56,16 +59,22 @@ class ElevationMeasure extends Widget {
      * @param {*} options The elevation measurement tool optional configuration
      * @param {HTMLElement} [options.parentElement=view.domElement] The parent HTML container of the div which
      *                                                              contains searchbar widgets.
-     * @param {string} [options.position='top'] Defines which position within the
+     * @param {String} [options.position='top'] Defines which position within the
      *                                          `parentElement` the searchbar should be
                                                                         * displayed to. Possible values are `top`,
                                                                         * `bottom`, `left`, `right`, `top-left`,
                                                                         * `top-right`, `bottom-left` and `bottom-right`.
                                                                         * If the input value does not match one of
                                                                         * these, it will be defaulted to `top`.
+    * @param {Number} [options.decimals=2] The number of decimals of the measured elevation
     */
     constructor(view, options = {}) {
         super(view, options, DEFAULT_OPTIONS);
+
+        if (options.decimals !== null && options.decimals !== undefined && !isNaN(options.decimals) &&
+            options.decimals >= 0) {
+            this.decimals = options.decimals;
+        }
 
         this.#view = view;
         this.#active = false;
@@ -170,7 +179,7 @@ class ElevationMeasure extends Widget {
         this.#view.notifyChange(true);
 
         const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldCoordinates);
-        const elevationText = `${elevation.toFixed(2)} m`; // TODO: make the number of decimals configurable + what about the unit ?
+        const elevationText = `${elevation.toFixed(this.decimals)} m`;
         this.updateLabel(elevationText, pointVec3);
     }
 
