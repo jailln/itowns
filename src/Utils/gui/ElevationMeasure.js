@@ -79,6 +79,9 @@ class ElevationMeasure extends Widget {
         this.domElement.appendChild(activationButton);
     }
 
+    /**
+     * Activate or deactivate tool
+     */
     onButtonClick() {
         this.#active = !this.#active;
         if (this.#active) {
@@ -90,6 +93,9 @@ class ElevationMeasure extends Widget {
         }
     }
 
+    /**
+     * Bind events of the tool and init labels stuff to display the elevation value
+     */
     activateTool() {
         // Save function signatures with binding to be able to remove the eventListener in deactivateTool
         this.onMouseMove = this.onMouseMove.bind(this);
@@ -100,34 +106,21 @@ class ElevationMeasure extends Widget {
         this.initLabel();
     }
 
+    /**
+     * Go back to a state before the tool has been activated: remove event listeners, points and labels
+     */
     deactivateTool() {
         window.removeEventListener('mousemove', this.onMouseMove);
         window.removeEventListener('mousedown', this.onMouseLeftClick);
 
-        // Dispose points geometries, materials and textures
-        const movePointGeom = this.#movePoint.geometry;
-        const clickPointGeom = this.#clickPoint.geometry;
-        this.#view.scene.remove(this.#movePoint);
-        this.#view.scene.remove(this.#clickPoint);
-        this.#movePoint = null;
-        this.#clickPoint = null;
-        movePointGeom.dispose();
-        clickPointGeom.dispose();
-        MOVE_POINT_MATERIAL.dispose();
-        CLICK_POINT_MATERIAL.dispose();
-        POINT_TEXTURE.dispose();
-
-        // remove label stuff
-        document.body.removeChild(this.#labelRenderer.domElement);
-        this.#labelRenderer = null;
-        this.#view.removeFrameRequester(MAIN_LOOP_EVENTS.AFTER_RENDER, this.#renderLabel);
-        this.#renderLabel = null;
-        this.#view.scene.remove(this.#labelObj);
-        this.#labelObj = null;
-
-        this.#view.notifyChange();
+        this.removePoints();
+        this.removeLabel();
     }
 
+    /**
+     * Create or update a point in the 3D scene that follows the mouse cursor
+     * @param {Event} event mouse event
+     */
     onMouseMove(event) {
         const worldCoordinates = this.#view.pickCoordinates(event);
         const pointVec3 = worldCoordinates.toVector3();
@@ -147,6 +140,10 @@ class ElevationMeasure extends Widget {
         this.#view.notifyChange();
     }
 
+    /**
+     * Create or update a point where the user chose to display the elevation.
+     * @param {Event} event mouse event
+     */
     onMouseLeftClick(event) {
         // Verify it's a left click
         if (event.button !== 0) {
@@ -178,6 +175,10 @@ class ElevationMeasure extends Widget {
         this.updateLabel(elevationText, pointVec3);
     }
 
+    /**
+     * Initialize all elements to display the measured elevation as a label with threejs: a threejs css 2D renderer,
+     * a callback to render the label at each frame, the div holding the label and a threejs label object.
+     */
     initLabel() {
         this.#labelRenderer = new CSS2DRenderer();
         this.#labelRenderer.setSize(window.innerWidth, window.innerHeight);
@@ -199,11 +200,49 @@ class ElevationMeasure extends Widget {
         this.#view.scene.add(this.#labelObj);
     }
 
+    /**
+     * Update label content and position
+     * @param {String} textContent the new text of the label
+     * @param {Vector3} position the new position of the label
+     */
     updateLabel(textContent, position) {
         this.#labelObj.element.textContent = textContent;
         this.#labelObj.position.copy(position);
         this.#labelObj.translateZ(30); // TODO: depends from point size and crs and zoom? : à faire en css plutot? -addLabel> translate en pixels en fonction size point?
         this.#labelObj.updateMatrixWorld();
+    }
+
+    /**
+     * Remove label stuff: Div holding the labels, the render label function callback and the threejs label object.
+     * Also initialize label related class properties to null.
+     */
+    removeLabel() {
+        this.removeLabel();
+        document.body.removeChild(this.#labelRenderer.domElement);
+        this.#labelRenderer = null;
+        this.#view.removeFrameRequester(MAIN_LOOP_EVENTS.AFTER_RENDER, this.#renderLabel);
+        this.#renderLabel = null;
+        this.#view.scene.remove(this.#labelObj);
+        this.#labelObj = null;
+
+        this.#view.notifyChange();
+    }
+
+    /**
+     * Remove points objects, geometries, materials and textures and reinitialize points.
+     */
+    removePoints() {
+        const movePointGeom = this.#movePoint.geometry;
+        const clickPointGeom = this.#clickPoint.geometry;
+        this.#view.scene.remove(this.#movePoint);
+        this.#view.scene.remove(this.#clickPoint);
+        this.#movePoint = null;
+        this.#clickPoint = null;
+        movePointGeom.dispose();
+        clickPointGeom.dispose();
+        MOVE_POINT_MATERIAL.dispose();
+        CLICK_POINT_MATERIAL.dispose();
+        POINT_TEXTURE.dispose();
     }
 }
 
