@@ -48,7 +48,6 @@ class ElevationMeasure extends Widget {
     #movePoint;
     #clickPoint;
     #labelRenderer;
-    #renderLabel;
     #labelObj;
 
     /**
@@ -186,18 +185,23 @@ class ElevationMeasure extends Widget {
         this.#labelRenderer.domElement.style.top = '0px';
         document.body.appendChild(this.#labelRenderer.domElement);
 
-        this.#renderLabel = function renderLabel() {
-            this.#labelRenderer.render(this.#view.scene, this.#view.camera.camera3D);
-        };
-        // Store function signature with binding to this to be able to remove the frame requester when the tool is 
+        // Store function signature with binding to this to be able to remove the frame requester when the tool is
         // disabled
-        this.#renderLabel = this.#renderLabel.bind(this);
-        this.#view.addFrameRequester(MAIN_LOOP_EVENTS.AFTER_RENDER, this.#renderLabel);
+        this.renderLabel = this.renderLabel.bind(this);
+        this.#view.addFrameRequester(MAIN_LOOP_EVENTS.AFTER_RENDER, this.renderLabel);
 
         const labelDiv = document.createElement('div');
         labelDiv.classList.add('label'); // TODO: make it parametrable
         this.#labelObj = new CSS2DObject(labelDiv);
         this.#view.scene.add(this.#labelObj);
+
+        this.onWindowResize = this.onWindowResize.bind(this);
+        window.addEventListener('resize', this.onWindowResize);
+    }
+
+
+    renderLabel() {
+        this.#labelRenderer.render(this.#view.scene, this.#view.camera.camera3D);
     }
 
     /**
@@ -220,12 +224,18 @@ class ElevationMeasure extends Widget {
         this.removeLabel();
         document.body.removeChild(this.#labelRenderer.domElement);
         this.#labelRenderer = null;
-        this.#view.removeFrameRequester(MAIN_LOOP_EVENTS.AFTER_RENDER, this.#renderLabel);
-        this.#renderLabel = null;
+        this.#view.removeFrameRequester(MAIN_LOOP_EVENTS.AFTER_RENDER, this.renderLabel);
         this.#view.scene.remove(this.#labelObj);
         this.#labelObj = null;
 
         this.#view.notifyChange();
+    }
+
+    /**
+     * Resize label renderer size
+     */
+    onWindowResize() {
+        this.#labelRenderer.setSize(window.innerWidth, window.innerHeight);
     }
 
     /**
