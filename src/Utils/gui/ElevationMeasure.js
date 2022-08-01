@@ -1,11 +1,12 @@
 import * as THREE from 'three';
-import LabelLayer from '../../Layer/LabelLayer';
-import Style from '../../Core/Style';
+import { CSS2DRenderer, CSS2DObject } from 'ThreeExtended/renderers/CSS2DRenderer';
+import LabelLayer from 'Layer/LabelLayer';
+import Style from 'Core/Style';
+import { FeatureCollection, FEATURE_TYPES } from 'Core/Feature';
+import FileSource from 'Source/FileSource';
+import { MAIN_LOOP_EVENTS } from 'Core/MainLoop';
 import DEMUtils from '../DEMUtils';
 import Widget from './Widget';
-import { FeatureCollection, FEATURE_TYPES } from '../../Core/Feature';
-import Coordinates from '../../Core/Geographic/Coordinates';
-import FileSource from '../../Source/FileSource';
 
 const DEFAULT_OPTIONS = {
     position: 'top',
@@ -52,6 +53,7 @@ class ElevationMeasure extends Widget {
     #view;
     #movePoint;
     #clickPoint;
+    #labelRenderer;
 
     /**
      *
@@ -96,8 +98,20 @@ class ElevationMeasure extends Widget {
         // Setup events
         window.addEventListener('mousemove', this.onMouseMove.bind(this));
         window.addEventListener('mousedown', this.onMouseLeftClick.bind(this));
-        
+
         // TODO: create points with visible = false
+
+        // Setup threejs label2D renderer
+        this.#labelRenderer = new CSS2DRenderer();
+        this.#labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        this.#labelRenderer.domElement.style.position = 'absolute';
+        this.#labelRenderer.domElement.style.top = '0px';
+        document.body.appendChild(this.#labelRenderer.domElement);
+
+        function renderLabel() {
+            this.#labelRenderer.render(this.#view.scene, this.#view.camera.camera3D);
+        }
+        this.#view.addFrameRequester(MAIN_LOOP_EVENTS.AFTER_RENDER, renderLabel.bind(this));
     }
 
     deactivateTool() {
@@ -154,45 +168,19 @@ class ElevationMeasure extends Widget {
 
         const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldCoordinates);
         const elevationText = `${elevation.toFixed(2)} m`; // TODO: make the number of decimals configurable + what about the unit ?
-        this.addLabel(elevationText, worldCoordinates);
+        this.addThreeLabel(elevationText, worldCoordinates.toVector3());
     }
 
-    // TODO: ongoing: doit on utiliser le label layer ou afficher direct un label ?
-    // Doit on créer des helpers pour créer des layers simple ? Quid de la MAJ dess
-    // positions des objets du labellayer ?
-    addLabel(textContent, position) {
+    addThreeLabel(textContent, position) {
         const labelDiv = document.createElement('div');
         labelDiv.classList.add('label'); // TODO: make it parametrable
         labelDiv.textContent = textContent;
 
-        const features = new FeatureCollection({
-            crs: this.#view.tileLayer.extent.crs,
-        });
-
-        // create new feature
-        const feature = features.requestFeatureByType(FEATURE_TYPES.POINT);
-
-        // add geometries to feature
-        const geometry = feature.bindNewGeometry();
-        geometry.startSubGeometry(1, feature);
-        geometry.pushCoordinates(position, feature);
-        geometry.properties.position = position;
-
-        geometry.updateExtent();
-        feature.updateExtent(geometry);
-        features.updateExtent(feature.extent);
-
-        const source = new FileSource({ features });
-
-        const labelLayer = new LabelLayer('elevation-measure', {
-            source,
-            domElement: labelDiv,
-            style: new Style({
-                text: { anchor: [-0.8, -1] },
-            }),
-        });
-
-        this.#view.addLayer(labelLayer);
+        const labelObj = new CSS2DObject(labelDiv);
+        labelObj.position.copy(position);
+        labelObj.translateZ(30); // TODO: depends from point size and crs and zoom? : à faire en css plutot?
+        labelObj.updateMatrixWorld();
+        this.#view.scene.add(labelObj);
     }
 }
 
