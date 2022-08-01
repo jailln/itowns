@@ -1,9 +1,5 @@
 import * as THREE from 'three';
 import { CSS2DRenderer, CSS2DObject } from 'ThreeExtended/renderers/CSS2DRenderer';
-import LabelLayer from 'Layer/LabelLayer';
-import Style from 'Core/Style';
-import { FeatureCollection, FEATURE_TYPES } from 'Core/Feature';
-import FileSource from 'Source/FileSource';
 import { MAIN_LOOP_EVENTS } from 'Core/MainLoop';
 import DEMUtils from '../DEMUtils';
 import Widget from './Widget';
@@ -17,13 +13,13 @@ const DEFAULT_OPTIONS = {
 
 // TODO: make this configurable
 const loader = new THREE.TextureLoader();
-const texture = loader.load('sprites/circle.png'); // TODO: make it configurable and put it on the itowns sample data for the example
+const POINT_TEXTURE = loader.load('sprites/circle.png'); // TODO: make it configurable and put it on the itowns sample data for the example (+ possibilité d'avoir une texture différente pour chaque point)
 
 // TODO: make it configurable: allow to pass in options for the material or directly a PointsMaterial
 const MOVE_POINT_MATERIAL = new THREE.PointsMaterial({
     color: 0xff0000,
     size: 10.0,
-    map: texture,
+    map: POINT_TEXTURE,
     alphaTest: 0.5,
     sizeAttenuation: false,
     depthTest: false }); // TODO: For rendering the point above terrain -> useful ?
@@ -31,12 +27,10 @@ const MOVE_POINT_MATERIAL = new THREE.PointsMaterial({
 const CLICK_POINT_MATERIAL = new THREE.PointsMaterial({
     color: 0xffffff,
     size: 10.0,
-    map: texture,
+    map: POINT_TEXTURE,
     alphaTest: 0.5,
     sizeAttenuation: false,
     depthTest: false }); // TODO: For rendering the point above terrain -> useful ?
-
-const labelLayerID = 'elevation-measure';
 
 // TODO: rendre paramétrable ce qui trigger la mesure d'élévation (e.g. touche, click)
 
@@ -54,6 +48,7 @@ class ElevationMeasure extends Widget {
     #movePoint;
     #clickPoint;
     #labelRenderer;
+    #renderLabel;
     #labelObj;
 
     /**
@@ -96,37 +91,57 @@ class ElevationMeasure extends Widget {
     }
 
     activateTool() {
-        // Setup events
-        window.addEventListener('mousemove', this.onMouseMove.bind(this));
-        window.addEventListener('mousedown', this.onMouseLeftClick.bind(this));
+        // Save function signatures with binding to be able to remove the eventListener in deactivateTool
+        this.onMouseMove = this.onMouseMove.bind(this);
+        this.onMouseLeftClick = this.onMouseLeftClick.bind(this);
+        window.addEventListener('mousemove', this.onMouseMove);
+        window.addEventListener('mousedown', this.onMouseLeftClick);
 
-        // TODO: create points with visible = false
-
-        // Setup threejs label2D renderer
         this.initLabel();
     }
 
     deactivateTool() {
-        // remove event
-        // remove points
+        window.removeEventListener('mousemove', this.onMouseMove);
+        window.removeEventListener('mousedown', this.onMouseLeftClick);
+
+        // Dispose points geometries, materials and textures
+        const movePointGeom = this.#movePoint.geometry;
+        const clickPointGeom = this.#clickPoint.geometry;
+        this.#view.scene.remove(this.#movePoint);
+        this.#view.scene.remove(this.#clickPoint);
+        this.#movePoint = null;
+        this.#clickPoint = null;
+        movePointGeom.dispose();
+        clickPointGeom.dispose();
+        MOVE_POINT_MATERIAL.dispose();
+        CLICK_POINT_MATERIAL.dispose();
+        POINT_TEXTURE.dispose();
+
         // remove label stuff
+        document.body.removeChild(this.#labelRenderer.domElement);
+        this.#labelRenderer = null;
+        this.#view.removeFrameRequester(MAIN_LOOP_EVENTS.AFTER_RENDER, this.#renderLabel);
+        this.#renderLabel = null;
+        this.#view.scene.remove(this.#labelObj);
+        this.#labelObj = null;
+
+        this.#view.notifyChange();
     }
 
     onMouseMove(event) {
         const worldCoordinates = this.#view.pickCoordinates(event);
-
-        const pointVertices = worldCoordinates.toVector3().toArray();
-        const typedPointVertices = new Float32Array(pointVertices);
+        const pointVec3 = worldCoordinates.toVector3();
+        const pointTypedArr = new Float32Array(pointVec3.toArray());
 
         if (!this.#movePoint) {
             const pointGeom = new THREE.BufferGeometry();
-            pointGeom.setAttribute('position', new THREE.BufferAttribute(typedPointVertices, 3));
+            pointGeom.setAttribute('position', new THREE.BufferAttribute(pointTypedArr, 3));
             this.#movePoint = new THREE.Points(pointGeom, MOVE_POINT_MATERIAL);
             this.#movePoint.renderOrder = 1; // TODO: For rendering the point above terrain -> useful ?
             this.#view.scene.add(this.#movePoint);
         } else {
             const pos = this.#movePoint.geometry.attributes.position;
-            pos.array = typedPointVertices;
+            pos.array = pointTypedArr;
             pos.needsUpdate = true;
         }
         this.#view.notifyChange();
@@ -139,20 +154,19 @@ class ElevationMeasure extends Widget {
         }
 
         const worldCoordinates = this.#view.pickCoordinates(event);
-
-        const pointVertices = worldCoordinates.toVector3().toArray();
-        const typedPointVertices = new Float32Array(pointVertices);
+        const pointVec3 = worldCoordinates.toVector3();
+        const pointTypedArr = new Float32Array(pointVec3.toArray());
 
         if (!this.#clickPoint) {
             const pointGeom = new THREE.BufferGeometry();
-            pointGeom.setAttribute('position', new THREE.BufferAttribute(typedPointVertices, 3));
+            pointGeom.setAttribute('position', new THREE.BufferAttribute(pointTypedArr, 3));
             this.#clickPoint = new THREE.Points(pointGeom, CLICK_POINT_MATERIAL);
             this.#clickPoint.updateMatrixWorld();
             this.#clickPoint.renderOrder = 1; // TODO: For rendering the point above terrain -> useful ?
             this.#view.scene.add(this.#clickPoint);
         } else {
             const pos = this.#clickPoint.geometry.attributes.position;
-            pos.array = typedPointVertices;
+            pos.array = pointTypedArr;
             pos.needsUpdate = true;
             this.#clickPoint.updateMatrixWorld();
         }
@@ -161,7 +175,7 @@ class ElevationMeasure extends Widget {
 
         const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldCoordinates);
         const elevationText = `${elevation.toFixed(2)} m`; // TODO: make the number of decimals configurable + what about the unit ?
-        this.updateLabel(elevationText, worldCoordinates.toVector3());
+        this.updateLabel(elevationText, pointVec3);
     }
 
     initLabel() {
@@ -171,10 +185,13 @@ class ElevationMeasure extends Widget {
         this.#labelRenderer.domElement.style.top = '0px';
         document.body.appendChild(this.#labelRenderer.domElement);
 
-        function renderLabel() {
+        this.#renderLabel = function renderLabel() {
             this.#labelRenderer.render(this.#view.scene, this.#view.camera.camera3D);
-        }
-        this.#view.addFrameRequester(MAIN_LOOP_EVENTS.AFTER_RENDER, renderLabel.bind(this));
+        };
+        // Store function signature with binding to this to be able to remove the frame requester when the tool is 
+        // disabled
+        this.#renderLabel = this.#renderLabel.bind(this);
+        this.#view.addFrameRequester(MAIN_LOOP_EVENTS.AFTER_RENDER, this.#renderLabel);
 
         const labelDiv = document.createElement('div');
         labelDiv.classList.add('label'); // TODO: make it parametrable
