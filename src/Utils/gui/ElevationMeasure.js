@@ -233,7 +233,6 @@ class ElevationMeasure extends Widget {
      * Also initialize label related class properties to null.
      */
     removeLabel() {
-        this.removeLabel();
         document.body.removeChild(this.#labelRenderer.domElement);
         this.#labelRenderer = null;
         this.#view.removeFrameRequester(MAIN_LOOP_EVENTS.AFTER_RENDER, this.renderLabel);
