@@ -14,7 +14,7 @@ const DEFAULT_OPTIONS = {
 const loader = new THREE.TextureLoader();
 const POINT_TEXTURE = loader.load('sprites/circle.png'); // TODO: make it configurable and put it on the itowns sample data for the example (+ possibilité d'avoir une texture différente pour chaque point)
 
-const POINT_SIZE = 20.0;
+const POINT_SIZE = 10.0;
 
 // TODO: make it configurable: allow to pass in options for the material or directly a PointsMaterial
 const MOVE_POINT_MATERIAL = new THREE.PointsMaterial({
@@ -23,7 +23,8 @@ const MOVE_POINT_MATERIAL = new THREE.PointsMaterial({
     map: POINT_TEXTURE,
     alphaTest: 0.5,
     sizeAttenuation: false,
-    depthTest: false }); // TODO: For rendering the point above terrain -> useful ?
+    depthTest: false,
+}); // TODO: For rendering the point above terrain -> useful ?
 
 const CLICK_POINT_MATERIAL = new THREE.PointsMaterial({
     color: 0xffffff,
@@ -180,8 +181,11 @@ class ElevationMeasure extends Widget {
 
         this.#view.notifyChange(true);
 
+        let elevationText = 'unknown'; // TODO: parametrable
         const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldCoordinates);
-        const elevationText = `${elevation.toFixed(this.decimals)} m`;
+        if (elevation !== null && elevation !== undefined && !isNaN(elevation)) {
+            elevationText = `${elevation.toFixed(this.decimals)} m`;
+        }
         this.updateLabel(elevationText, pointVec3);
     }
 
