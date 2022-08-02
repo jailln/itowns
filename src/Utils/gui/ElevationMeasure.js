@@ -14,10 +14,12 @@ const DEFAULT_OPTIONS = {
 const loader = new THREE.TextureLoader();
 const POINT_TEXTURE = loader.load('sprites/circle.png'); // TODO: make it configurable and put it on the itowns sample data for the example (+ possibilité d'avoir une texture différente pour chaque point)
 
+const POINT_SIZE = 20.0;
+
 // TODO: make it configurable: allow to pass in options for the material or directly a PointsMaterial
 const MOVE_POINT_MATERIAL = new THREE.PointsMaterial({
     color: 0xff0000,
-    size: 10.0,
+    size: POINT_SIZE,
     map: POINT_TEXTURE,
     alphaTest: 0.5,
     sizeAttenuation: false,
@@ -25,7 +27,7 @@ const MOVE_POINT_MATERIAL = new THREE.PointsMaterial({
 
 const CLICK_POINT_MATERIAL = new THREE.PointsMaterial({
     color: 0xffffff,
-    size: 10.0,
+    size: POINT_SIZE,
     map: POINT_TEXTURE,
     alphaTest: 0.5,
     sizeAttenuation: false,
@@ -201,6 +203,9 @@ class ElevationMeasure extends Widget {
 
         const labelDiv = document.createElement('div');
         labelDiv.classList.add('label'); // TODO: make it parametrable
+        const posLabel = document.createElement('div');
+        posLabel.style.transform = `translateY(${-((POINT_SIZE / 2) + 5)}px)`; // TODO: dépend de la taille de la police et autre... le rendre paramétrable ? Trouver un autre moyen ? A documenter en tous cas
+        labelDiv.appendChild(posLabel);
         this.#labelObj = new CSS2DObject(labelDiv);
         this.#view.scene.add(this.#labelObj);
 
@@ -222,9 +227,8 @@ class ElevationMeasure extends Widget {
      * @param {Vector3} position the new position of the label
      */
     updateLabel(textContent, position) {
-        this.#labelObj.element.textContent = textContent;
+        this.#labelObj.element.childNodes[0].textContent = textContent;
         this.#labelObj.position.copy(position);
-        this.#labelObj.translateZ(30); // TODO: depends from point size and crs and zoom? : à faire en css plutot? -addLabel> translate en pixels en fonction size point?
         this.#labelObj.updateMatrixWorld();
     }
 
