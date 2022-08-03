@@ -41,9 +41,9 @@
 
             // Define camera initial position
             const placement = {
-                coord: new itowns.Coordinates('EPSG:4326', 4.8357, 45.7640),
-                range: 6000,
-                tilt: 50,
+                coord: new itowns.Coordinates('EPSG:4326', -0.526821, 45.008766),
+                range: 1000,
+                tilt: 30,
             }
 
             // `viewerDiv` contains iTowns' rendering area (`<canvas>`)
@@ -77,6 +77,18 @@
             }
             itowns.Fetcher.json('layers/JSONLayers/WORLD_DTM.json').then(addElevationLayerFromConfig);
             itowns.Fetcher.json('layers/JSONLayers/IGN_MNT_HIGHRES.json').then(addElevationLayerFromConfig);
+
+            // 3D Tiles Layer
+            itowns.enableDracoLoader('./libs/draco/');
+            const bordeaux3DSource = new itowns.C3DTilesSource({
+                url: 'http://localhost/bordeaux-004-with-texture-128-draco/tileset.json'
+            });
+            const bordeaux3DLayer = new itowns.C3DTilesLayer('bordeaux-004', {
+                name: 'bordeaux-004',
+                source: bordeaux3DSource,
+            }, view);
+
+            itowns.View.prototype.addLayer.call(view, bordeaux3DLayer);
 
             // ---------- ADD ELEVATION MEASUREMENT WIDGET : ----------
 

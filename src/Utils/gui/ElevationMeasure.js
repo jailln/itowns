@@ -188,12 +188,17 @@ class ElevationMeasure extends Widget {
 
         this.#view.notifyChange(true);
 
-        let elevationText = this.noElevationText;
-        const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldCoordinates);
-        if (elevation !== null && elevation !== undefined && !isNaN(elevation)) {
-            elevationText = `${elevation.toFixed(this.decimals)} m`;
-        }
-        this.updateLabel(elevationText, pointVec3);
+        // let elevationText = this.noElevationText;
+
+        const pickedObj = this.#view.pickObjectsAt(event, 5 /* , this.#view.getLayerById('bordeaux-004') */);
+        console.log(pickedObj);
+
+        // TERRAIN ELEVATION
+        // const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldCoordinates);
+        // if (elevation !== null && elevation !== undefined && !isNaN(elevation)) {
+        //     elevationText = `${elevation.toFixed(this.decimals)} m`;
+        // }
+        // this.updateLabel(elevationText, pointVec3);
     }
 
     /**
