@@ -55,6 +55,7 @@ class ElevationMeasure extends Widget {
 
     // Config options
     decimals = 2;
+    noElevationText = '-';
 
     /**
      *
@@ -70,6 +71,8 @@ class ElevationMeasure extends Widget {
                                                                         * If the input value does not match one of
                                                                         * these, it will be defaulted to `top`.
     * @param {Number} [options.decimals=2] The number of decimals of the measured elevation
+    * @param {String} [noElevationText='-'] The text to display when the elevation value is not found (e.g. if the user
+    * tries to measure the elevation where there is no elevation texture available).
     */
     constructor(view, options = {}) {
         super(view, options, DEFAULT_OPTIONS);
@@ -77,6 +80,10 @@ class ElevationMeasure extends Widget {
         if (options.decimals !== null && options.decimals !== undefined && !isNaN(options.decimals) &&
             options.decimals >= 0) {
             this.decimals = options.decimals;
+        }
+        if (options.noElevationText &&
+            (typeof options.noElevationText === 'string' || options.noElevationText instanceof String)) {
+            this.noElevationText = options.noElevationText;
         }
 
         this.#view = view;
@@ -181,7 +188,7 @@ class ElevationMeasure extends Widget {
 
         this.#view.notifyChange(true);
 
-        let elevationText = 'unknown'; // TODO: parametrable
+        let elevationText = this.noElevationText;
         const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldCoordinates);
         if (elevation !== null && elevation !== undefined && !isNaN(elevation)) {
             elevationText = `${elevation.toFixed(this.decimals)} m`;
