@@ -190,7 +190,7 @@ class ElevationMeasure extends Widget {
 
         // let elevationText = this.noElevationText;
 
-        const pickedObj = this.#view.pickObjectsAt(event, 5 /* , this.#view.getLayerById('bordeaux-004') */);
+        const pickedObj = this.#view.pickObjectsAt(event);
         console.log(pickedObj);
 
         // TERRAIN ELEVATION
