@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { CSS2DRenderer, CSS2DObject } from 'ThreeExtended/renderers/CSS2DRenderer';
 import { MAIN_LOOP_EVENTS } from 'Core/MainLoop';
-import DEMUtils from '../DEMUtils';
+import Coordinates from 'Core/Geographic/Coordinates';
+import DEMUtils from 'Utils/DEMUtils';
 import Widget from './Widget';
 
 const DEFAULT_OPTIONS = {
@@ -183,22 +184,41 @@ class ElevationMeasure extends Widget {
             const pos = this.#clickPoint.geometry.attributes.position;
             pos.array = pointTypedArr;
             pos.needsUpdate = true;
-            this.#clickPoint.updateMatrixWorld();
         }
 
         this.#view.notifyChange(true);
 
-        // let elevationText = this.noElevationText;
+        const pickedObjs = this.#view.pickObjectsAt(event);
+        console.log(pickedObjs);
 
-        const pickedObj = this.#view.pickObjectsAt(event);
-        console.log(pickedObj);
-
-        // TERRAIN ELEVATION
-        // const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldCoordinates);
-        // if (elevation !== null && elevation !== undefined && !isNaN(elevation)) {
-        //     elevationText = `${elevation.toFixed(this.decimals)} m`;
-        // }
-        // this.updateLabel(elevationText, pointVec3);
+        let elevationText = this.noElevationText;
+        if (pickedObjs) {
+            const geometricObj = [];
+            let tileMeshObj = null;
+            for (const obj of pickedObjs) {
+                if (obj.distance !== null && obj.distance !== undefined) {
+                    geometricObj.push(obj);
+                } else if (obj.object.isTileMesh) {
+                    tileMeshObj = obj;
+                } else {
+                    console.warn('Elevation measure not yet supported for features of PotreeLayer');
+                }
+            }
+            if (geometricObj.length !== 0) {
+                geometricObj.sort((o1, o2) => o1.distance - o2.distance);
+                const closestObj = geometricObj[0];
+                const pickedPoint = new Coordinates(this.#view.referenceCrs, closestObj.point);
+                const pickedPoint4326 = new Coordinates('EPSG:4326');
+                pickedPoint.as('EPSG:4326', pickedPoint4326);
+                elevationText = `${pickedPoint4326.z.toFixed(this.decimals)} m`;
+            } else if (tileMeshObj) {
+                const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldCoordinates);
+                if (elevation !== null && elevation !== undefined && !isNaN(elevation)) {
+                    elevationText = `${elevation.toFixed(this.decimals)} m`;
+                }
+            }
+        }
+        this.updateLabel(elevationText, pointVec3);
     }
 
     /**
