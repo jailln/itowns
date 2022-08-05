@@ -25,8 +25,8 @@ const MOVE_POINT_MATERIAL = new THREE.PointsMaterial({
     map: POINT_TEXTURE,
     alphaTest: 0.5,
     sizeAttenuation: false,
-    depthTest: false,
-}); // TODO: For rendering the point above terrain -> useful ?
+    depthTest: false, // allows to render the point above the objects of the scene (used with renderOrder = 1)
+});
 
 const CLICK_POINT_MATERIAL = new THREE.PointsMaterial({
     color: 0xffffff,
@@ -34,7 +34,8 @@ const CLICK_POINT_MATERIAL = new THREE.PointsMaterial({
     map: POINT_TEXTURE,
     alphaTest: 0.5,
     sizeAttenuation: false,
-    depthTest: false }); // TODO: For rendering the point above terrain -> useful ?
+    depthTest: false, // allows to render the point above the objects of the scene (used with renderOrder = 1)
+});
 
 /**
  * Widget to measure the elevation in the 3D scene. Click anywhere in the scene to measure and display the elevation.
@@ -130,14 +131,18 @@ class ElevationMeasure extends Widget {
      */
     activateTool() {
         // Save function signatures with binding to be able to remove the eventListener in deactivateTool
+        this.onMouseDown = this.onMouseDown.bind(this);
         this.onMouseMove = this.onMouseMove.bind(this);
         this.onMouseUp = this.onMouseUp.bind(this);
-        this.onMouseDown = this.onMouseDown.bind(this);
-        window.addEventListener('mousemove', this.onMouseMove);
         window.addEventListener('mousedown', this.onMouseDown);
+        window.addEventListener('mousemove', this.onMouseMove);
         window.addEventListener('mouseup', this.onMouseUp);
+
+        // TODO: gérer le cas planar aussi car là c'est que pour le globe -> rajouter un event dans planarcontrols ?
+        // ou utiliser 'wheel' direct ?
+        // TODO: créer une fonction
+        // TODO: remove eventlistener
         this.#view.controls.addEventListener(CONTROL_EVENTS.RANGE_CHANGED, () => {
-            // this.#movePoint.renderOrder = 1; // TODO: For rendering the point above terrain -> useful ?
             const worldCoordinates = this.#view.pickCoordinates(this.#previousMouseMoveEvent);
             const pointVec3 = worldCoordinates.toVector3();
             const pointTypedArr = new Float32Array(pointVec3.toArray());
@@ -146,8 +151,8 @@ class ElevationMeasure extends Widget {
                 const pointGeom = new THREE.BufferGeometry();
                 pointGeom.setAttribute('position', new THREE.BufferAttribute(pointTypedArr, 3));
                 this.#movePoint = new THREE.Points(pointGeom, MOVE_POINT_MATERIAL);
-                this.#movePoint.frustumCulled = false;
-                this.#movePoint.renderOrder = 1; // TODO: For rendering the point above terrain -> useful ?
+                this.#movePoint.frustumCulled = false; // Avoid the point to be frustum culled when zooming in.
+                this.#movePoint.renderOrder = 1; // allows to render the point above the other 3D objects
                 this.#view.scene.add(this.#movePoint);
             } else {
                 const pos = this.#movePoint.geometry.attributes.position;
@@ -164,8 +169,8 @@ class ElevationMeasure extends Widget {
      * Go back to a state before the tool has been activated: remove event listeners, points and labels
      */
     deactivateTool() {
-        window.removeEventListener('mousemove', this.onMouseMove);
         window.removeEventListener('mousedown', this.onMouseDown);
+        window.removeEventListener('mousemove', this.onMouseMove);
         window.removeEventListener('mouseup', this.onMouseUp);
 
         this.removePoints();
@@ -179,6 +184,7 @@ class ElevationMeasure extends Widget {
     onMouseMove(event) {
         this.#drag = true;
         this.#previousMouseMoveEvent = event;
+
         const worldCoordinates = this.#view.pickCoordinates(event);
         const pointVec3 = worldCoordinates.toVector3();
         const pointTypedArr = new Float32Array(pointVec3.toArray());
@@ -187,8 +193,8 @@ class ElevationMeasure extends Widget {
             const pointGeom = new THREE.BufferGeometry();
             pointGeom.setAttribute('position', new THREE.BufferAttribute(pointTypedArr, 3));
             this.#movePoint = new THREE.Points(pointGeom, MOVE_POINT_MATERIAL);
-            this.#movePoint.frustumCulled = false;
-            this.#movePoint.renderOrder = 1; // TODO: For rendering the point above terrain -> useful ?
+            this.#movePoint.frustumCulled = false; // Avoid the point to be frustum culled when zooming in.
+            this.#movePoint.renderOrder = 1; // allows to render the point above the other 3D objects
             this.#view.scene.add(this.#movePoint);
         } else {
             const pos = this.#movePoint.geometry.attributes.position;
@@ -206,6 +212,7 @@ class ElevationMeasure extends Widget {
      * Create or update a point where the user chose to display the elevation.
      * @param {Event} event mouse event
      */
+    // TODO: refactor
     onMouseUp(event) {
         // Verify it's a left click and it's not a drag movement
         if (event.button !== 0 || this.#drag === true) {
@@ -221,8 +228,8 @@ class ElevationMeasure extends Widget {
             pointGeom.setAttribute('position', new THREE.BufferAttribute(pointTypedArr, 3));
             this.#clickPoint = new THREE.Points(pointGeom, CLICK_POINT_MATERIAL);
             this.#clickPoint.updateMatrixWorld();
-            this.#clickPoint.frustumCulled = false;
-            this.#clickPoint.renderOrder = 1; // TODO: For rendering the point above terrain -> useful ?
+            this.#clickPoint.frustumCulled = false; // Avoid the point to be frustum culled when zooming in.
+            this.#clickPoint.renderOrder = 1; // allows to render the point above the other 3D objects
             this.#view.scene.add(this.#clickPoint);
         } else {
             const pos = this.#clickPoint.geometry.attributes.position;
@@ -275,12 +282,12 @@ class ElevationMeasure extends Widget {
         this.#labelRenderer.domElement.style.top = '0px';
         document.body.appendChild(this.#labelRenderer.domElement);
 
-        // Store function signature with binding to this to be able to remove the frame requester when the tool is
-        // disabled
         this.renderLabel = this.renderLabel.bind(this);
         this.#view.addFrameRequester(MAIN_LOOP_EVENTS.AFTER_RENDER, this.renderLabel);
 
         const labelDiv = document.createElement('div');
+        // hack to position the label above the click point: add a child div containing a translation (if we put it in 
+        // labelDiv directly, it gets overwritten by threejs CSS2DRenderer)
         const posLabel = document.createElement('div');
         posLabel.classList.add('label-elevation');
         posLabel.style.transform = `translateY(${-((POINT_SIZE / 2) + 12)}px)`; // TODO: dépend de la taille de la police et autre... le rendre paramétrable ? Trouver un autre moyen ? A documenter en tous cas
@@ -306,6 +313,7 @@ class ElevationMeasure extends Widget {
      * @param {Vector3} position the new position of the label
      */
     updateLabel(textContent, position) {
+        // Update the posLabel div textContent
         this.#labelObj.element.childNodes[0].textContent = textContent;
         this.#labelObj.position.copy(position);
         this.#labelObj.updateMatrixWorld();
