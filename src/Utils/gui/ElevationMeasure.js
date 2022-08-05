@@ -3,6 +3,7 @@ import { CSS2DRenderer, CSS2DObject } from 'ThreeExtended/renderers/CSS2DRendere
 import { MAIN_LOOP_EVENTS } from 'Core/MainLoop';
 import Coordinates from 'Core/Geographic/Coordinates';
 import DEMUtils from 'Utils/DEMUtils';
+import { CONTROL_EVENTS } from 'Controls/GlobeControls';
 import Widget from './Widget';
 
 const DEFAULT_OPTIONS = {
@@ -38,6 +39,7 @@ const CLICK_POINT_MATERIAL = new THREE.PointsMaterial({
 // TODO: rendre paramétrable ce qui trigger la mesure d'élévation (e.g. touche, click)
 
 let drag = false;
+let previousMousePosEvent = null;
 
 /**
  * TODO DESC
@@ -124,6 +126,26 @@ class ElevationMeasure extends Widget {
         window.addEventListener('mousemove', this.onMouseMove);
         window.addEventListener('mousedown', this.onMouseDown);
         window.addEventListener('mouseup', this.onMouseUp);
+        this.#view.controls.addEventListener(CONTROL_EVENTS.RANGE_CHANGED, () => {
+            // this.#movePoint.renderOrder = 1; // TODO: For rendering the point above terrain -> useful ?
+            const worldCoordinates = this.#view.pickCoordinates(previousMousePosEvent);
+            const pointVec3 = worldCoordinates.toVector3();
+            const pointTypedArr = new Float32Array(pointVec3.toArray());
+
+            if (!this.#movePoint) {
+                const pointGeom = new THREE.BufferGeometry();
+                pointGeom.setAttribute('position', new THREE.BufferAttribute(pointTypedArr, 3));
+                this.#movePoint = new THREE.Points(pointGeom, MOVE_POINT_MATERIAL);
+                this.#movePoint.frustumCulled = false;
+                this.#movePoint.renderOrder = 1; // TODO: For rendering the point above terrain -> useful ?
+                this.#view.scene.add(this.#movePoint);
+            } else {
+                const pos = this.#movePoint.geometry.attributes.position;
+                pos.array = pointTypedArr;
+                pos.needsUpdate = true;
+            }
+            this.#view.notifyChange();
+        });
 
         this.initLabel();
     }
@@ -146,6 +168,7 @@ class ElevationMeasure extends Widget {
      */
     onMouseMove(event) {
         drag = true;
+        previousMousePosEvent = event;
         const worldCoordinates = this.#view.pickCoordinates(event);
         const pointVec3 = worldCoordinates.toVector3();
         const pointTypedArr = new Float32Array(pointVec3.toArray());
@@ -154,6 +177,7 @@ class ElevationMeasure extends Widget {
             const pointGeom = new THREE.BufferGeometry();
             pointGeom.setAttribute('position', new THREE.BufferAttribute(pointTypedArr, 3));
             this.#movePoint = new THREE.Points(pointGeom, MOVE_POINT_MATERIAL);
+            this.#movePoint.frustumCulled = false;
             this.#movePoint.renderOrder = 1; // TODO: For rendering the point above terrain -> useful ?
             this.#view.scene.add(this.#movePoint);
         } else {
@@ -187,6 +211,7 @@ class ElevationMeasure extends Widget {
             pointGeom.setAttribute('position', new THREE.BufferAttribute(pointTypedArr, 3));
             this.#clickPoint = new THREE.Points(pointGeom, CLICK_POINT_MATERIAL);
             this.#clickPoint.updateMatrixWorld();
+            this.#clickPoint.frustumCulled = false;
             this.#clickPoint.renderOrder = 1; // TODO: For rendering the point above terrain -> useful ?
             this.#view.scene.add(this.#clickPoint);
         } else {
