@@ -36,11 +36,6 @@ const CLICK_POINT_MATERIAL = new THREE.PointsMaterial({
     sizeAttenuation: false,
     depthTest: false }); // TODO: For rendering the point above terrain -> useful ?
 
-// TODO: rendre paramétrable ce qui trigger la mesure d'élévation (e.g. touche, click)
-
-let drag = false;
-let previousMousePosEvent = null;
-
 /**
  * TODO DESC
  *
@@ -50,15 +45,25 @@ let previousMousePosEvent = null;
  * @property    {HTMLElement}   parentElement   The parent HTML container of `this.domElement`.
  */
 class ElevationMeasure extends Widget {
-    // Internal fields
+    // --- Internal fields
+    // boolean indicating whether the tool is active or not
     #active;
+    // the view where to pick
     #view;
+    // a point following the mouse pointer
     #movePoint;
+    // a point displayed where the user clicks to mesure elevation
     #clickPoint;
+    // the threejs CSS2DRenderer used to display the label containing the elevation
     #labelRenderer;
+    // the threejs label object
     #labelObj;
+    // boolean used to check if the user is dragging (don't mesure elevation or just clicking (mesure elevation)
+    #drag = false;
+    // store previous mouse move event (and hence last mouse position) to move the movePoint when zooming in or out
+    #previousMouseMoveEvent = null;
 
-    // Config options
+    // --- Config options
     decimals = 2;
     noElevationText = '-';
 
@@ -123,12 +128,13 @@ class ElevationMeasure extends Widget {
         // Save function signatures with binding to be able to remove the eventListener in deactivateTool
         this.onMouseMove = this.onMouseMove.bind(this);
         this.onMouseUp = this.onMouseUp.bind(this);
+        this.onMouseDown = this.onMouseDown.bind(this);
         window.addEventListener('mousemove', this.onMouseMove);
         window.addEventListener('mousedown', this.onMouseDown);
         window.addEventListener('mouseup', this.onMouseUp);
         this.#view.controls.addEventListener(CONTROL_EVENTS.RANGE_CHANGED, () => {
             // this.#movePoint.renderOrder = 1; // TODO: For rendering the point above terrain -> useful ?
-            const worldCoordinates = this.#view.pickCoordinates(previousMousePosEvent);
+            const worldCoordinates = this.#view.pickCoordinates(this.#previousMouseMoveEvent);
             const pointVec3 = worldCoordinates.toVector3();
             const pointTypedArr = new Float32Array(pointVec3.toArray());
 
@@ -167,8 +173,8 @@ class ElevationMeasure extends Widget {
      * @param {Event} event mouse event
      */
     onMouseMove(event) {
-        drag = true;
-        previousMousePosEvent = event;
+        this.#drag = true;
+        this.#previousMouseMoveEvent = event;
         const worldCoordinates = this.#view.pickCoordinates(event);
         const pointVec3 = worldCoordinates.toVector3();
         const pointTypedArr = new Float32Array(pointVec3.toArray());
@@ -189,7 +195,7 @@ class ElevationMeasure extends Widget {
     }
 
     onMouseDown() {
-        drag = false;
+        this.#drag = false;
     }
 
     /**
@@ -198,7 +204,7 @@ class ElevationMeasure extends Widget {
      */
     onMouseUp(event) {
         // Verify it's a left click and it's not a drag movement
-        if (event.button !== 0 || drag === true) {
+        if (event.button !== 0 || this.#drag === true) {
             return;
         }
 
