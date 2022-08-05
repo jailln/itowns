@@ -238,8 +238,8 @@ class ElevationMeasure extends Widget {
 
         const labelDiv = document.createElement('div');
         const posLabel = document.createElement('div');
-        posLabel.classList.add('label-elevation'); // TODO: make it parametrable
-        posLabel.style.transform = `translateY(${-((POINT_SIZE / 2) + 10)}px)`; // TODO: dépend de la taille de la police et autre... le rendre paramétrable ? Trouver un autre moyen ? A documenter en tous cas
+        posLabel.classList.add('label-elevation');
+        posLabel.style.transform = `translateY(${-((POINT_SIZE / 2) + 12)}px)`; // TODO: dépend de la taille de la police et autre... le rendre paramétrable ? Trouver un autre moyen ? A documenter en tous cas
         labelDiv.appendChild(posLabel);
         this.#labelObj = new CSS2DObject(labelDiv);
         this.#view.scene.add(this.#labelObj);
@@ -292,16 +292,22 @@ class ElevationMeasure extends Widget {
      * Remove points objects, geometries, materials and textures and reinitialize points.
      */
     removePoints() {
-        const movePointGeom = this.#movePoint.geometry;
-        const clickPointGeom = this.#clickPoint.geometry;
-        this.#view.scene.remove(this.#movePoint);
-        this.#view.scene.remove(this.#clickPoint);
-        this.#movePoint = null;
-        this.#clickPoint = null;
-        movePointGeom.dispose();
-        clickPointGeom.dispose();
-        MOVE_POINT_MATERIAL.dispose();
-        CLICK_POINT_MATERIAL.dispose();
+        if (this.#movePoint) {
+            const movePointGeom = this.#movePoint.geometry;
+            this.#view.scene.remove(this.#movePoint);
+            this.#movePoint = null;
+            movePointGeom.dispose();
+            MOVE_POINT_MATERIAL.dispose();
+        }
+
+        if (this.#clickPoint) {
+            const clickPointGeom = this.#clickPoint.geometry;
+            this.#view.scene.remove(this.#clickPoint);
+            this.#clickPoint = null;
+            clickPointGeom.dispose();
+            CLICK_POINT_MATERIAL.dispose();
+        }
+
         POINT_TEXTURE.dispose();
     }
 }
