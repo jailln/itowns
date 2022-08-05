@@ -37,12 +37,16 @@ const CLICK_POINT_MATERIAL = new THREE.PointsMaterial({
     depthTest: false }); // TODO: For rendering the point above terrain -> useful ?
 
 /**
- * TODO DESC
+ * Widget to measure the elevation in the 3D scene. Click anywhere in the scene to measure and display the elevation.
+ * Works on all layers that can be added to itowns: 3D Tiles, terrain, etc.
  *
  * @extends Widget
  *
- * @property    {HTMLElement}   domElement      An html div containing the searchbar.
- * @property    {HTMLElement}   parentElement   The parent HTML container of `this.domElement`.
+ * @property {HTMLElement} domElement An html div containing the searchbar.
+ * @property {HTMLElement} parentElement The parent HTML container of `this.domElement`.
+ * @property {Number} [decimals=2] The number of decimals of the measured elevation.
+ * @property {String} [noElevationText='-'] The text to display when the elevation value is not found (e.g. if the user
+ * tries to measure the elevation where there is no elevation texture available).
  */
 class ElevationMeasure extends Widget {
     // --- Internal fields
@@ -69,8 +73,8 @@ class ElevationMeasure extends Widget {
 
     /**
      *
-     * @param {*} view the iTowns view in which the tool will measure elevation
-     * @param {*} options The elevation measurement tool optional configuration
+     * @param {View} view the iTowns view in which the tool will measure elevation
+     * @param {Object} options The elevation measurement tool optional configuration
      * @param {HTMLElement} [options.parentElement=view.domElement] The parent HTML container of the div which
      *                                                              contains searchbar widgets.
      * @param {String} [options.position='top'] Defines which position within the
@@ -81,7 +85,7 @@ class ElevationMeasure extends Widget {
                                                                         * If the input value does not match one of
                                                                         * these, it will be defaulted to `top`.
     * @param {Number} [options.decimals=2] The number of decimals of the measured elevation
-    * @param {String} [noElevationText='-'] The text to display when the elevation value is not found (e.g. if the user
+    * @param {String} [options.noElevationText='-'] The text to display when the elevation value is not found (e.g. if the user
     * tries to measure the elevation where there is no elevation texture available).
     */
     constructor(view, options = {}) {
