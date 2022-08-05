@@ -189,7 +189,6 @@ class ElevationMeasure extends Widget {
         this.#view.notifyChange(true);
 
         const pickedObjs = this.#view.pickObjectsAt(event);
-        console.log(pickedObjs);
 
         let elevationText = this.noElevationText;
         if (pickedObjs) {
@@ -238,9 +237,9 @@ class ElevationMeasure extends Widget {
         this.#view.addFrameRequester(MAIN_LOOP_EVENTS.AFTER_RENDER, this.renderLabel);
 
         const labelDiv = document.createElement('div');
-        labelDiv.classList.add('label'); // TODO: make it parametrable
         const posLabel = document.createElement('div');
-        posLabel.style.transform = `translateY(${-((POINT_SIZE / 2) + 5)}px)`; // TODO: dépend de la taille de la police et autre... le rendre paramétrable ? Trouver un autre moyen ? A documenter en tous cas
+        posLabel.classList.add('label-elevation'); // TODO: make it parametrable
+        posLabel.style.transform = `translateY(${-((POINT_SIZE / 2) + 10)}px)`; // TODO: dépend de la taille de la police et autre... le rendre paramétrable ? Trouver un autre moyen ? A documenter en tous cas
         labelDiv.appendChild(posLabel);
         this.#labelObj = new CSS2DObject(labelDiv);
         this.#view.scene.add(this.#labelObj);

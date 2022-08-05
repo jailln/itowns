@@ -81,10 +81,10 @@
             // 3D Tiles Layer
             itowns.enableDracoLoader('./libs/draco/');
             const bordeaux3DSource = new itowns.C3DTilesSource({
-                url: 'http://localhost/bordeaux-004-with-texture-128-draco/tileset.json'
+                url: 'http://bg-test-soft-3d-fn.ciril.lan/3dtiles-bordeaux-without-texture/tileset.json'
             });
-            const bordeaux3DLayer = new itowns.C3DTilesLayer('bordeaux-004', {
-                name: 'bordeaux-004',
+            const bordeaux3DLayer = new itowns.C3DTilesLayer('bordeaux', {
+                name: 'bordeaux',
                 source: bordeaux3DSource,
             }, view);
 
