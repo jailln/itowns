@@ -383,15 +383,8 @@
 
 .label-elevation {
     background-color: #313336bb;
-    /* border: 1px solid #222222; */
-
     color: white;
     padding: 1;
-
-    /* display: flex;
-    align-items: center;
-    justify-content: center; */
-
     font-weight: 900;
     font-size: 15px;
 }
