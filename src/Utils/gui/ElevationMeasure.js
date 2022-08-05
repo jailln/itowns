@@ -37,6 +37,8 @@ const CLICK_POINT_MATERIAL = new THREE.PointsMaterial({
 
 // TODO: rendre paramétrable ce qui trigger la mesure d'élévation (e.g. touche, click)
 
+let drag = false;
+
 /**
  * TODO DESC
  *
@@ -118,9 +120,10 @@ class ElevationMeasure extends Widget {
     activateTool() {
         // Save function signatures with binding to be able to remove the eventListener in deactivateTool
         this.onMouseMove = this.onMouseMove.bind(this);
-        this.onMouseLeftClick = this.onMouseLeftClick.bind(this);
+        this.onMouseUp = this.onMouseUp.bind(this);
         window.addEventListener('mousemove', this.onMouseMove);
-        window.addEventListener('mousedown', this.onMouseLeftClick);
+        window.addEventListener('mousedown', this.onMouseDown);
+        window.addEventListener('mouseup', this.onMouseUp);
 
         this.initLabel();
     }
@@ -130,7 +133,8 @@ class ElevationMeasure extends Widget {
      */
     deactivateTool() {
         window.removeEventListener('mousemove', this.onMouseMove);
-        window.removeEventListener('mousedown', this.onMouseLeftClick);
+        window.removeEventListener('mousedown', this.onMouseDown);
+        window.removeEventListener('mouseup', this.onMouseUp);
 
         this.removePoints();
         this.removeLabel();
@@ -141,6 +145,7 @@ class ElevationMeasure extends Widget {
      * @param {Event} event mouse event
      */
     onMouseMove(event) {
+        drag = true;
         const worldCoordinates = this.#view.pickCoordinates(event);
         const pointVec3 = worldCoordinates.toVector3();
         const pointTypedArr = new Float32Array(pointVec3.toArray());
@@ -159,13 +164,17 @@ class ElevationMeasure extends Widget {
         this.#view.notifyChange();
     }
 
+    onMouseDown() {
+        drag = false;
+    }
+
     /**
      * Create or update a point where the user chose to display the elevation.
      * @param {Event} event mouse event
      */
-    onMouseLeftClick(event) {
-        // Verify it's a left click
-        if (event.button !== 0) {
+    onMouseUp(event) {
+        // Verify it's a left click and it's not a drag movement
+        if (event.button !== 0 || drag === true) {
             return;
         }
 
