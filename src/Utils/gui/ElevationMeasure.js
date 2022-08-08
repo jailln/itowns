@@ -189,7 +189,7 @@ class ElevationMeasure extends Widget {
         this.#drag = true;
         this.#previousMouseMoveEvent = event;
 
-        const worldCoordinates = this.#view.pickCoordinates(event);
+        const worldCoordinates = this.#view.pickTerrainCoordinates(event);
         const pointVec3 = worldCoordinates.toVector3();
         const pointTypedArr = new Float32Array(pointVec3.toArray());
 
@@ -222,7 +222,7 @@ class ElevationMeasure extends Widget {
             return;
         }
 
-        const worldCoordinates = this.#view.pickCoordinates(event);
+        const worldCoordinates = this.#view.pickTerrainCoordinates(event);
         const pointVec3 = worldCoordinates.toVector3();
         const pointTypedArr = new Float32Array(pointVec3.toArray());
 
@@ -250,7 +250,7 @@ class ElevationMeasure extends Widget {
      * Updates move point position on zoom
      */
     onZoom() {
-        const worldCoordinates = this.#view.pickCoordinates(this.#previousMouseMoveEvent);
+        const worldCoordinates = this.#view.pickTerrainCoordinates(this.#previousMouseMoveEvent);
         const pointVec3 = worldCoordinates.toVector3();
         const pointTypedArr = new Float32Array(pointVec3.toArray());
 
