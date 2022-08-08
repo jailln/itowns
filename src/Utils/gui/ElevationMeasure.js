@@ -189,8 +189,8 @@ class ElevationMeasure extends Widget {
         this.#drag = true;
         this.#previousMouseMoveEvent = event;
 
-        const worldCoordinates = this.#view.pickTerrainCoordinates(event);
-        const pointVec3 = worldCoordinates.toVector3();
+        const terrainWorldCoordinates = this.#view.pickTerrainCoordinates(event);
+        const pointVec3 = terrainWorldCoordinates.toVector3();
         const pointTypedArr = new Float32Array(pointVec3.toArray());
 
         if (!this.#movePoint) {
@@ -222,8 +222,8 @@ class ElevationMeasure extends Widget {
             return;
         }
 
-        const worldCoordinates = this.#view.pickTerrainCoordinates(event);
-        const pointVec3 = worldCoordinates.toVector3();
+        const terrainWorldCoordinates = this.#view.pickTerrainCoordinates(event);
+        const pointVec3 = terrainWorldCoordinates.toVector3();
         const pointTypedArr = new Float32Array(pointVec3.toArray());
 
         if (!this.#clickPoint) {
@@ -242,7 +242,7 @@ class ElevationMeasure extends Widget {
 
         this.#view.notifyChange(true);
 
-        const elevationText = this.getElevationText(event, worldCoordinates);
+        const elevationText = this.getElevationText(event, terrainWorldCoordinates);
         this.updateLabel(elevationText, pointVec3);
     }
 
@@ -250,8 +250,8 @@ class ElevationMeasure extends Widget {
      * Updates move point position on zoom
      */
     onZoom() {
-        const worldCoordinates = this.#view.pickTerrainCoordinates(this.#previousMouseMoveEvent);
-        const pointVec3 = worldCoordinates.toVector3();
+        const terrainWorldCoordinates = this.#view.pickTerrainCoordinates(this.#previousMouseMoveEvent);
+        const pointVec3 = terrainWorldCoordinates.toVector3();
         const pointTypedArr = new Float32Array(pointVec3.toArray());
 
         if (!this.#movePoint) {
@@ -270,12 +270,13 @@ class ElevationMeasure extends Widget {
     }
 
     /**
-     * Compute elevation from mouse position and worldCoordinates picked from this mouse position
+     * Compute elevation from mouse position
      * @param {Event} event the mouse event that generated the elevation measure
-     * @param {Coordinates} worldCoordinates coordinates in the 3D world correxponding tot he mouse position
+     * @param {Coordinates} terrainWorldCoordinates terrain coordinates in the 3D world correxponding to the mouse
+     * position
      * @return {String} the elevation text to display in the label
      */
-    getElevationText(event, worldCoordinates) {
+    getElevationText(event, terrainWorldCoordinates) {
         let elevationText = this.noElevationText;
 
         const pickedObjs = this.#view.pickObjectsAt(event);
@@ -283,68 +284,61 @@ class ElevationMeasure extends Widget {
             return elevationText;
         }
 
-        // Picked objects can be of two types: geometric 3D objects in the scene or a tile mesh from the tiled layer of
-        // the view (a tile of the planar layer or a tile of the globe layer). Distance with the camera is only
-        // computed for geometric objects.
-        const geometricObj = [];
-        let tileMeshObj = null;
-        // Sort geometric objects and tileMesh objects. If there is geometric objects, they are above the tile layer
-        // since they are above ground. TODO: ne marche pas si on a une montagne puis des objets 3D derrière...
+        // Picked objects can either be 3D objects (which have an attribute distance indicating its distance to the
+        // camera) or a tileMesh (which don't have a distance attribute). Compute the distance attribute of the tileMesh
+        // to enable sorting objects based on that distance afterwards.
         for (const obj of pickedObjs) {
-            if (obj.distance !== null && obj.distance !== undefined) {
-                geometricObj.push(obj);
-            } else if (obj.object.isTileMesh) {
-                tileMeshObj = obj;
-            } else {
-                console.warn('Elevation measure not yet supported for features of PotreeLayer');
-            }
-        }
-
-        if (geometricObj.length === 0 && tileMeshObj) {
-            const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldCoordinates);
-            if (elevation !== null && elevation !== undefined && !isNaN(elevation)) {
-                elevationText = `${elevation.toFixed(this.decimals)} m`;
-            }
-        } else {
-            // sort objects from the closest to the farest
-            geometricObj.sort((o1, o2) => o1.distance - o2.distance);
-            const closestGeometricObj = geometricObj[0];
-
-            const cameraPos = new THREE.Vector3();
-            this.#view.camera.camera3D.getWorldPosition(cameraPos);
-            const cameraPosGeographic = new Coordinates(this.#view.referenceCrs, cameraPos);
-            const terrainIntersectionDist = worldCoordinates.spatialEuclideanDistanceTo(cameraPosGeographic);
-
-            if (closestGeometricObj.distance < terrainIntersectionDist) {
-                const pickedPoint = new Coordinates(this.#view.referenceCrs, closestGeometricObj.point);
-                // convert to 4326 to get elevation
-                const pickedPoint4326 = new Coordinates('EPSG:4326');
-                pickedPoint.as('EPSG:4326', pickedPoint4326);
-                elevationText = `${pickedPoint4326.z.toFixed(this.decimals)} m`;
-            } else if (tileMeshObj) { // if no 3D objects, get elevation from tilemesh
-                const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldCoordinates);
-                if (elevation !== null && elevation !== undefined && !isNaN(elevation)) {
-                    elevationText = `${elevation.toFixed(this.decimals)} m`;
+            if (!obj.distance) {
+                if (obj.isTileMesh) {
+                    obj.distance = this.computeTerrainDistance(terrainWorldCoordinates);
+                } else {
+                    console.warn('[Elevation measure widget]: Picked object that are not of type TileMesh should have' +
+                    ' a distance attribute.');
                 }
             }
         }
+
+        // Sort objects from the closest to the farest
+        pickedObjs.sort((o1, o2) => o1.distance - o2.distance);
+        const closestObj = pickedObjs[0];
+
+        if (closestObj.object.isTileMesh) {
+            elevationText = this.computeTerrainElevationText(terrainWorldCoordinates);
+        } else if (closestObj.object.isPoints) {
+            const pickedPoint = new Coordinates(this.#view.referenceCrs, closestObj.position.x, closestObj.position.y,
+                closestObj.position.z);
+            elevationText = this.compute3DObjectElevationText(pickedPoint);
+        } else if (closestObj.object.isMesh) {
+            const pickedPoint = new Coordinates(this.#view.referenceCrs, closestObj.point);
+            elevationText = this.compute3DObjectElevationText(pickedPoint);
+        } else {
+            console.error('[Elevation measure widget]: Unknown picked object type.');
+        }
+
         return elevationText;
     }
 
-    computeTerrainDistance() {
-
+    computeTerrainDistance(worldTerrainCoordinates) {
+        const cameraPos = new THREE.Vector3();
+        this.#view.camera.camera3D.getWorldPosition(cameraPos);
+        const cameraPosGeographic = new Coordinates(this.#view.referenceCrs, cameraPos);
+        return worldTerrainCoordinates.spatialEuclideanDistanceTo(cameraPosGeographic);
     }
 
-    computePotreeDistance() {
-
+    computeTerrainElevationText(worldTerrainCoordinates) {
+        const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldTerrainCoordinates);
+        if (elevation !== null && elevation !== undefined && !isNaN(elevation)) {
+            return `${elevation.toFixed(this.decimals)} m`;
+        } else {
+            return this.noElevationText;
+        }
     }
 
-    computeTerrainElevationText() {
-
-    }
-
-    computeGeometricObjectText() {
-
+    compute3DObjectElevationText(pickedPoint) {
+        // convert the point to 4326 to get elevation
+        const pickedPoint4326 = new Coordinates('EPSG:4326');
+        pickedPoint.as('EPSG:4326', pickedPoint4326);
+        return `${pickedPoint4326.z.toFixed(this.decimals)} m`;
     }
 
     /**
