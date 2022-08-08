@@ -299,23 +299,52 @@ class ElevationMeasure extends Widget {
                 console.warn('Elevation measure not yet supported for features of PotreeLayer');
             }
         }
-        if (geometricObj.length !== 0) {
-            // sort objects from the closest to the farest
-            geometricObj.sort((o1, o2) => o1.distance - o2.distance);
-            const closestObj = geometricObj[0];
-            const pickedPoint = new Coordinates(this.#view.referenceCrs, closestObj.point);
-            // convert to 4326 to get elevation
-            const pickedPoint4326 = new Coordinates('EPSG:4326');
-            pickedPoint.as('EPSG:4326', pickedPoint4326);
-            elevationText = `${pickedPoint4326.z.toFixed(this.decimals)} m`;
-        } else if (tileMeshObj) { // if no 3D objects, get elevation from tilemesh
+
+        if (geometricObj.length === 0 && tileMeshObj) {
             const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldCoordinates);
             if (elevation !== null && elevation !== undefined && !isNaN(elevation)) {
                 elevationText = `${elevation.toFixed(this.decimals)} m`;
             }
-        }
+        } else {
+            // sort objects from the closest to the farest
+            geometricObj.sort((o1, o2) => o1.distance - o2.distance);
+            const closestGeometricObj = geometricObj[0];
 
+            const cameraPos = new THREE.Vector3();
+            this.#view.camera.camera3D.getWorldPosition(cameraPos);
+            const cameraPosGeographic = new Coordinates(this.#view.referenceCrs, cameraPos);
+            const terrainIntersectionDist = worldCoordinates.spatialEuclideanDistanceTo(cameraPosGeographic);
+
+            if (closestGeometricObj.distance < terrainIntersectionDist) {
+                const pickedPoint = new Coordinates(this.#view.referenceCrs, closestGeometricObj.point);
+                // convert to 4326 to get elevation
+                const pickedPoint4326 = new Coordinates('EPSG:4326');
+                pickedPoint.as('EPSG:4326', pickedPoint4326);
+                elevationText = `${pickedPoint4326.z.toFixed(this.decimals)} m`;
+            } else if (tileMeshObj) { // if no 3D objects, get elevation from tilemesh
+                const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldCoordinates);
+                if (elevation !== null && elevation !== undefined && !isNaN(elevation)) {
+                    elevationText = `${elevation.toFixed(this.decimals)} m`;
+                }
+            }
+        }
         return elevationText;
+    }
+
+    computeTerrainDistance() {
+
+    }
+
+    computePotreeDistance() {
+
+    }
+
+    computeTerrainElevationText() {
+
+    }
+
+    computeGeometricObjectText() {
+
     }
 
     /**
