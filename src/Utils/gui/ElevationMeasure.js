@@ -14,28 +14,19 @@ const DEFAULT_OPTIONS = {
 };
 
 const loader = new THREE.TextureLoader();
-const POINT_TEXTURE = loader.load('sprites/circle.png'); // TODO: make it configurable and put it on the itowns sample data for the example (+ possibilité d'avoir une texture différente pour chaque point)
+const POINT_TEXTURE = loader.load('sprites/mycircle.png'); // TODO: make it configurable and put it on the itowns sample data for the example (+ possibilité d'avoir une texture différente pour chaque point)
 
-const POINT_SIZE = 10.0;
-
-// TODO: make it configurable: allow to pass in options for the material or directly a PointsMaterial
 const MOVE_POINT_MATERIAL = new THREE.PointsMaterial({
     color: 0xff0000,
-    size: POINT_SIZE,
+    size: 10.0,
     map: POINT_TEXTURE,
     alphaTest: 0.5,
     sizeAttenuation: false,
     depthTest: false, // allows to render the point above the objects of the scene (used with renderOrder = 1)
 });
 
-const CLICK_POINT_MATERIAL = new THREE.PointsMaterial({
-    color: 0xffffff,
-    size: POINT_SIZE,
-    map: POINT_TEXTURE,
-    alphaTest: 0.5,
-    sizeAttenuation: false,
-    depthTest: false, // allows to render the point above the objects of the scene (used with renderOrder = 1)
-});
+const CLICK_POINT_MATERIAL = MOVE_POINT_MATERIAL.clone();
+CLICK_POINT_MATERIAL.color.set(0xffffff);
 
 /**
  * Widget to measure the elevation in the 3D scene. Click anywhere in the scene to measure and display the elevation.
@@ -71,6 +62,8 @@ class ElevationMeasure extends Widget {
     // --- Config options
     decimals = 2;
     noElevationText = '-';
+    movePointMaterial = MOVE_POINT_MATERIAL;
+    clickPointMaterial = CLICK_POINT_MATERIAL;
 
     /**
      *
@@ -88,6 +81,14 @@ class ElevationMeasure extends Widget {
     * @param {Number} [options.decimals=2] The number of decimals of the measured elevation
     * @param {String} [options.noElevationText='-'] The text to display when the elevation value is not found (e.g. if the user
     * tries to measure the elevation where there is no elevation texture available).
+    * @param {Material|Object} [options.movePointMaterial='THREE.PointsMaterial'] Either the material of the point
+    * moving under the cursor (e.g. THREE.PointsMaterial) or options of THREE.PointsMaterial that should be applied to
+    * the default material (e.g. {color: 0x0000FF} for a blue point). If not set, defaults to a THREE.PointsMaterial
+    * with a circle sprite, red color and 10px size.
+    * @param {Material|Object} [options.clickPointMaterial='THREE.PointsMaterial'] Either the material of the point
+    * where the elevation is measured (e.g. THREE.PointsMaterial) or options of THREE.PointsMaterial that should be
+    * applied to the default material (e.g. {size: 20} for a point of size 20px). If not set, defaults to a
+    * THREE.PointsMaterial with a circle sprite, white color and 10px size.
     */
     constructor(view, options = {}) {
         super(view, options, DEFAULT_OPTIONS);
@@ -99,6 +100,28 @@ class ElevationMeasure extends Widget {
         if (options.noElevationText &&
             (typeof options.noElevationText === 'string' || options.noElevationText instanceof String)) {
             this.noElevationText = options.noElevationText;
+        }
+        if (options.movePointMaterial) {
+            if (options.movePointMaterial.isMaterial) {
+                this.movePointMaterial = options.movePointMaterial;
+                // render the point above the objects of the scene (used with renderOrder = 1)
+                this.movePointMaterial.depthTest = false;
+            } else if (typeof options.movePointMaterial === 'object') {
+                this.movePointMaterial.setValues(options.movePointMaterial);
+            } else {
+                console.warn('[Elevation measure widget] Material options should either be a THREE.Material or an object.');
+            }
+        }
+        if (options.clickPointMaterial) {
+            if (options.clickPointMaterial.isMaterial) {
+                this.clickPointMaterial = options.clickPointMaterial;
+                // render the point above the objects of the scene (used with renderOrder = 1)
+                this.clickPointMaterial.depthTest = false;
+            } else if (typeof options.clickPointMaterial === 'object') {
+                this.clickPointMaterial.setValues(options.clickPointMaterial);
+            } else {
+                console.warn('[Elevation measure widget] Material options should either be a THREE.Material or an object.');
+            }
         }
 
         this.#view = view;
@@ -150,7 +173,7 @@ class ElevationMeasure extends Widget {
             if (!this.#movePoint) {
                 const pointGeom = new THREE.BufferGeometry();
                 pointGeom.setAttribute('position', new THREE.BufferAttribute(pointTypedArr, 3));
-                this.#movePoint = new THREE.Points(pointGeom, MOVE_POINT_MATERIAL);
+                this.#movePoint = new THREE.Points(pointGeom, this.movePointMaterial);
                 this.#movePoint.frustumCulled = false; // Avoid the point to be frustum culled when zooming in.
                 this.#movePoint.renderOrder = 1; // allows to render the point above the other 3D objects
                 this.#view.scene.add(this.#movePoint);
@@ -192,7 +215,7 @@ class ElevationMeasure extends Widget {
         if (!this.#movePoint) {
             const pointGeom = new THREE.BufferGeometry();
             pointGeom.setAttribute('position', new THREE.BufferAttribute(pointTypedArr, 3));
-            this.#movePoint = new THREE.Points(pointGeom, MOVE_POINT_MATERIAL);
+            this.#movePoint = new THREE.Points(pointGeom, this.movePointMaterial);
             this.#movePoint.frustumCulled = false; // Avoid the point to be frustum culled when zooming in.
             this.#movePoint.renderOrder = 1; // allows to render the point above the other 3D objects
             this.#view.scene.add(this.#movePoint);
@@ -226,7 +249,7 @@ class ElevationMeasure extends Widget {
         if (!this.#clickPoint) {
             const pointGeom = new THREE.BufferGeometry();
             pointGeom.setAttribute('position', new THREE.BufferAttribute(pointTypedArr, 3));
-            this.#clickPoint = new THREE.Points(pointGeom, CLICK_POINT_MATERIAL);
+            this.#clickPoint = new THREE.Points(pointGeom, this.clickPointMaterial);
             this.#clickPoint.updateMatrixWorld();
             this.#clickPoint.frustumCulled = false; // Avoid the point to be frustum culled when zooming in.
             this.#clickPoint.renderOrder = 1; // allows to render the point above the other 3D objects
@@ -290,7 +313,8 @@ class ElevationMeasure extends Widget {
         // labelDiv directly, it gets overwritten by threejs CSS2DRenderer)
         const posLabel = document.createElement('div');
         posLabel.classList.add('label-elevation');
-        posLabel.style.transform = `translateY(${-((POINT_SIZE / 2) + 12)}px)`; // TODO: dépend de la taille de la police et autre... le rendre paramétrable ? Trouver un autre moyen ? A documenter en tous cas
+        const pointSize = this.clickPointMaterial.size;
+        posLabel.style.transform = `translateY(${-((pointSize / 2) + 12)}px)`; // TODO: dépend de la taille de la police et autre... le rendre paramétrable ? Trouver un autre moyen ? A documenter en tous cas
         labelDiv.appendChild(posLabel);
         this.#labelObj = new CSS2DObject(labelDiv);
         this.#view.scene.add(this.#labelObj);
@@ -349,7 +373,7 @@ class ElevationMeasure extends Widget {
             this.#view.scene.remove(this.#movePoint);
             this.#movePoint = null;
             movePointGeom.dispose();
-            MOVE_POINT_MATERIAL.dispose();
+            this.movePointMaterial.dispose();
         }
 
         if (this.#clickPoint) {
@@ -357,7 +381,7 @@ class ElevationMeasure extends Widget {
             this.#view.scene.remove(this.#clickPoint);
             this.#clickPoint = null;
             clickPointGeom.dispose();
-            CLICK_POINT_MATERIAL.dispose();
+            this.clickPointMaterial.dispose();
         }
 
         POINT_TEXTURE.dispose();
