@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import RenderMode from 'Renderer/RenderMode';
 import { unpack1K } from 'Renderer/LayeredMaterial';
+import Coordinates from 'Core/Geographic/Coordinates';
 
 function hideEverythingElse(view, object, threejsLayer = 0) {
     // We want to render only 'object' and its hierarchy.
@@ -187,9 +188,16 @@ export default {
                 // if baseId matches objId, the clicked point belongs to `o`
                 for (let i = 0; i < candidates.length; i++) {
                     if (candidates[i].objId == o.baseId) {
+                        // Compute distance to the camera
+                        const pointCoordinate = new Coordinates(view.referenceCrs, o.position.x, o.position.y, o.position.z);
+                        const cameraPos = new THREE.Vector3();
+                        view.camera.camera3D.getWorldPosition(cameraPos);
+                        const cameraPosGeo = new Coordinates(view.referenceCrs, cameraPos);
+                        const dist = pointCoordinate.spatialEuclideanDistanceTo(cameraPosGeo);
                         result.push({
                             object: o,
                             index: candidates[i].index,
+                            distance: dist,
                             layer,
                         });
                     }
