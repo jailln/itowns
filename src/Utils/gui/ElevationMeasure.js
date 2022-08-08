@@ -14,7 +14,7 @@ const DEFAULT_OPTIONS = {
 };
 
 const loader = new THREE.TextureLoader();
-const POINT_TEXTURE = loader.load('sprites/mycircle.png'); // TODO: make it configurable and put it on the itowns sample data for the example (+ possibilité d'avoir une texture différente pour chaque point)
+const POINT_TEXTURE = loader.load('sprites/mycircle.png'); // TODO: update url once PR itowns sample data accepted
 
 const MOVE_POINT_MATERIAL = new THREE.PointsMaterial({
     color: 0xff0000,
@@ -78,9 +78,11 @@ class ElevationMeasure extends Widget {
                                                                         * `top-right`, `bottom-left` and `bottom-right`.
                                                                         * If the input value does not match one of
                                                                         * these, it will be defaulted to `top`.
+    * @param {number} [options.width=50] The width in pixels of the scale.
+    * @param {number} [options.height=50] The height in pixels of the scale.
     * @param {Number} [options.decimals=2] The number of decimals of the measured elevation
-    * @param {String} [options.noElevationText='-'] The text to display when the elevation value is not found (e.g. if the user
-    * tries to measure the elevation where there is no elevation texture available).
+    * @param {String} [options.noElevationText='-'] The text to display when the elevation value is not found (e.g. if
+    * the user tries to measure the elevation where there is no elevation texture available).
     * @param {Material|Object} [options.movePointMaterial='THREE.PointsMaterial'] Either the material of the point
     * moving under the cursor (e.g. THREE.PointsMaterial) or options of THREE.PointsMaterial that should be applied to
     * the default material (e.g. {color: 0x0000FF} for a blue point). If not set, defaults to a THREE.PointsMaterial
@@ -157,33 +159,11 @@ class ElevationMeasure extends Widget {
         this.onMouseDown = this.onMouseDown.bind(this);
         this.onMouseMove = this.onMouseMove.bind(this);
         this.onMouseUp = this.onMouseUp.bind(this);
+        this.onZoom = this.onZoom.bind(this);
         window.addEventListener('mousedown', this.onMouseDown);
         window.addEventListener('mousemove', this.onMouseMove);
         window.addEventListener('mouseup', this.onMouseUp);
-
-        // TODO: gérer le cas planar aussi car là c'est que pour le globe -> rajouter un event dans planarcontrols ?
-        // ou utiliser 'wheel' direct ?
-        // TODO: créer une fonction
-        // TODO: remove eventlistener
-        this.#view.controls.addEventListener(CONTROL_EVENTS.RANGE_CHANGED, () => {
-            const worldCoordinates = this.#view.pickCoordinates(this.#previousMouseMoveEvent);
-            const pointVec3 = worldCoordinates.toVector3();
-            const pointTypedArr = new Float32Array(pointVec3.toArray());
-
-            if (!this.#movePoint) {
-                const pointGeom = new THREE.BufferGeometry();
-                pointGeom.setAttribute('position', new THREE.BufferAttribute(pointTypedArr, 3));
-                this.#movePoint = new THREE.Points(pointGeom, this.movePointMaterial);
-                this.#movePoint.frustumCulled = false; // Avoid the point to be frustum culled when zooming in.
-                this.#movePoint.renderOrder = 1; // allows to render the point above the other 3D objects
-                this.#view.scene.add(this.#movePoint);
-            } else {
-                const pos = this.#movePoint.geometry.attributes.position;
-                pos.array = pointTypedArr;
-                pos.needsUpdate = true;
-            }
-            this.#view.notifyChange();
-        });
+        this.#view.controls.addEventListener(CONTROL_EVENTS.RANGE_CHANGED, this.onZoom);
 
         this.initLabel();
     }
@@ -195,6 +175,7 @@ class ElevationMeasure extends Widget {
         window.removeEventListener('mousedown', this.onMouseDown);
         window.removeEventListener('mousemove', this.onMouseMove);
         window.removeEventListener('mouseup', this.onMouseUp);
+        this.#view.controls.removeEventListener(CONTROL_EVENTS.RANGE_CHANGED, this.onZoom);
 
         this.removePoints();
         this.removeLabel();
@@ -292,6 +273,26 @@ class ElevationMeasure extends Widget {
             }
         }
         this.updateLabel(elevationText, pointVec3);
+    }
+
+    onZoom() {
+        const worldCoordinates = this.#view.pickCoordinates(this.#previousMouseMoveEvent);
+        const pointVec3 = worldCoordinates.toVector3();
+        const pointTypedArr = new Float32Array(pointVec3.toArray());
+
+        if (!this.#movePoint) {
+            const pointGeom = new THREE.BufferGeometry();
+            pointGeom.setAttribute('position', new THREE.BufferAttribute(pointTypedArr, 3));
+            this.#movePoint = new THREE.Points(pointGeom, this.movePointMaterial);
+            this.#movePoint.frustumCulled = false; // Avoid the point to be frustum culled when zooming in.
+            this.#movePoint.renderOrder = 1; // allows to render the point above the other 3D objects
+            this.#view.scene.add(this.#movePoint);
+        } else {
+            const pos = this.#movePoint.geometry.attributes.position;
+            pos.array = pointTypedArr;
+            pos.needsUpdate = true;
+        }
+        this.#view.notifyChange();
     }
 
     /**
