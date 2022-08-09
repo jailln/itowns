@@ -212,12 +212,10 @@ class ElevationMeasure extends Widget {
      * @param {Coordinates} coordinates The coordinates where to display the point
      */
     updatePointPosition(point, coordinates) {
-        // Compute new point position
-        const pointVec3 = coordinates.toVector3();
-        const pointTypedArr = new Float32Array(pointVec3.toArray());
-        // Update point position
         const pos = point.geometry.attributes.position;
-        pos.array = pointTypedArr;
+        pos.array[0] = coordinates.x;
+        pos.array[1] = coordinates.y;
+        pos.array[2] = coordinates.z;
         pos.needsUpdate = true;
     }
 
