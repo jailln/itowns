@@ -183,6 +183,11 @@ class ElevationMeasure extends Widget {
         this.removeLabel();
     }
 
+    /**
+     * Initializes a threejs point with specific attributes
+     * @param {Material} material the threejs Material to apply to the point
+     * @return {Points} the threejs point initialized
+     */
     initPoint(material) {
         const typedArr = new Float32Array(3);
         const bufferAttrib = new THREE.BufferAttribute(typedArr, 3);
@@ -201,9 +206,14 @@ class ElevationMeasure extends Widget {
         return point;
     }
 
-    updatePointPosition(point, terrainWorldCoordinates) {
+    /**
+     * Updates a threejs point position
+     * @param {Points} point the threejs point to update
+     * @param {Coordinates} coordinates The coordinates where to display the point
+     */
+    updatePointPosition(point, coordinates) {
         // Compute new point position
-        const pointVec3 = terrainWorldCoordinates.toVector3();
+        const pointVec3 = coordinates.toVector3();
         const pointTypedArr = new Float32Array(pointVec3.toArray());
         // Update point position
         const pos = point.geometry.attributes.position;
@@ -293,7 +303,7 @@ class ElevationMeasure extends Widget {
         for (const obj of pickedObjs) {
             if (!obj.distance) {
                 if (obj.object.isTileMesh) {
-                    obj.distance = this.computeTerrainDistance(terrainWorldCoordinates);
+                    obj.distance = this.computeDistanceToCamera(terrainWorldCoordinates);
                 } else {
                     console.warn('[Elevation measure widget]: Picked object that are not of type TileMesh should have' +
                     ' a distance attribute.');
@@ -321,15 +331,26 @@ class ElevationMeasure extends Widget {
         return elevationText;
     }
 
-    computeTerrainDistance(worldTerrainCoordinates) {
+    /**
+     * Computes the distance between a point and the camera
+     * @param {Coordinates} point the point in the 3D scene
+     * @return {Number} the spatial euclidean distance between the point and the camera
+     */
+    computeDistanceToCamera(point) {
         const cameraPos = new THREE.Vector3();
         this.#view.camera.camera3D.getWorldPosition(cameraPos);
         const cameraPosGeographic = new Coordinates(this.#view.referenceCrs, cameraPos);
-        return worldTerrainCoordinates.spatialEuclideanDistanceTo(cameraPosGeographic);
+        return point.spatialEuclideanDistanceTo(cameraPosGeographic);
     }
 
-    computeTerrainElevationText(worldTerrainCoordinates) {
-        const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, worldTerrainCoordinates);
+    /**
+     * Computes the elevation and the elevation text to display from a point on the terrain in the 3D scene
+     * (in world coordinates)
+     * @param {Coordiantes} terrainCoord The 3D coordinates of the terrain point
+     * @return {String} The elevation text to display in the label
+     */
+    computeTerrainElevationText(terrainCoord) {
+        const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, terrainCoord);
         if (elevation !== null && elevation !== undefined && !isNaN(elevation)) {
             return `${elevation.toFixed(this.decimals)} m`;
         } else {
@@ -337,10 +358,16 @@ class ElevationMeasure extends Widget {
         }
     }
 
-    compute3DObjectElevationText(pickedPoint) {
+    /**
+     * COmputes the elevation and elevation text to display from a point in the 3D scene (likely a point on a picked 3D
+     * object in world coordinates)
+     * @param {Coordinates} point the point to compute elevation text from
+     * @return {String} the elevation text to display in the label
+     */
+    compute3DObjectElevationText(point) {
         // convert the point to 4326 to get elevation
         const pickedPoint4326 = new Coordinates('EPSG:4326');
-        pickedPoint.as('EPSG:4326', pickedPoint4326);
+        point.as('EPSG:4326', pickedPoint4326);
         return `${pickedPoint4326.z.toFixed(this.decimals)} m`;
     }
 
