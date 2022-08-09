@@ -370,7 +370,8 @@
     height: 50px;
     border-radius: 50%;
     
-    background-image: url('../images/3d-tool-measure-1point.svg');
+    /* TODO: update image url to itowns-sample-data when PR has been accepted */
+    background-image: url('../images/3d-tool-measure-1point.svg'); 
     background-repeat: no-repeat;
     background-size: auto 90%;
     background-position: center;

@@ -68,7 +68,7 @@ class ElevationMeasure extends Widget {
     /**
      *
      * @param {View} view the iTowns view in which the tool will measure elevation
-     * @param {Object} options The elevation measurement tool optional configuration
+     * @param {Object} options The elevation measure widget optional configuration
      * @param {HTMLElement} [options.parentElement=view.domElement] The parent HTML container of the div which
      *                                                              contains searchbar widgets.
      * @param {String} [options.position='top'] Defines which position within the
@@ -165,6 +165,8 @@ class ElevationMeasure extends Widget {
         window.addEventListener('mouseup', this.onMouseUp);
         this.#view.controls.addEventListener(CONTROL_EVENTS.RANGE_CHANGED, this.onZoom);
 
+        this.#movePoint = this.initPoint(this.movePointMaterial);
+        this.#clickPoint = this.initPoint(this.clickPointMaterial);
         this.initLabel();
     }
 
@@ -181,6 +183,34 @@ class ElevationMeasure extends Widget {
         this.removeLabel();
     }
 
+    initPoint(material) {
+        const typedArr = new Float32Array(3);
+        const bufferAttrib = new THREE.BufferAttribute(typedArr, 3);
+
+        const bufferGeom = new THREE.BufferGeometry();
+        bufferGeom.setAttribute('position', bufferAttrib);
+
+        const point = new THREE.Points(bufferGeom, material);
+
+        point.frustumCulled = false; // Avoid the point to be frustum culled when zooming in.
+        point.renderOrder = 1; // allows to render the point above the other 3D objects of the scene
+        point.visible = false;
+
+        this.#view.scene.add(point);
+
+        return point;
+    }
+
+    updatePointPosition(point, terrainWorldCoordinates) {
+        // Compute new point position
+        const pointVec3 = terrainWorldCoordinates.toVector3();
+        const pointTypedArr = new Float32Array(pointVec3.toArray());
+        // Update point position
+        const pos = point.geometry.attributes.position;
+        pos.array = pointTypedArr;
+        pos.needsUpdate = true;
+    }
+
     /**
      * Create or update a point in the 3D scene that follows the mouse cursor
      * @param {Event} event mouse event
@@ -189,22 +219,13 @@ class ElevationMeasure extends Widget {
         this.#drag = true;
         this.#previousMouseMoveEvent = event;
 
-        const terrainWorldCoordinates = this.#view.pickTerrainCoordinates(event);
-        const pointVec3 = terrainWorldCoordinates.toVector3();
-        const pointTypedArr = new Float32Array(pointVec3.toArray());
-
-        if (!this.#movePoint) {
-            const pointGeom = new THREE.BufferGeometry();
-            pointGeom.setAttribute('position', new THREE.BufferAttribute(pointTypedArr, 3));
-            this.#movePoint = new THREE.Points(pointGeom, this.movePointMaterial);
-            this.#movePoint.frustumCulled = false; // Avoid the point to be frustum culled when zooming in.
-            this.#movePoint.renderOrder = 1; // allows to render the point above the other 3D objects
-            this.#view.scene.add(this.#movePoint);
-        } else {
-            const pos = this.#movePoint.geometry.attributes.position;
-            pos.array = pointTypedArr;
-            pos.needsUpdate = true;
+        if (this.#movePoint.visible === false) {
+            this.#movePoint.visible = true;
         }
+
+        const terrainWorldCoordinates = this.#view.pickTerrainCoordinates(event);
+        this.updatePointPosition(this.#movePoint, terrainWorldCoordinates);
+
         this.#view.notifyChange();
     }
 
@@ -222,50 +243,32 @@ class ElevationMeasure extends Widget {
             return;
         }
 
-        const terrainWorldCoordinates = this.#view.pickTerrainCoordinates(event);
-        const pointVec3 = terrainWorldCoordinates.toVector3();
-        const pointTypedArr = new Float32Array(pointVec3.toArray());
-
-        if (!this.#clickPoint) {
-            const pointGeom = new THREE.BufferGeometry();
-            pointGeom.setAttribute('position', new THREE.BufferAttribute(pointTypedArr, 3));
-            this.#clickPoint = new THREE.Points(pointGeom, this.clickPointMaterial);
-            this.#clickPoint.updateMatrixWorld();
-            this.#clickPoint.frustumCulled = false; // Avoid the point to be frustum culled when zooming in.
-            this.#clickPoint.renderOrder = 1; // allows to render the point above the other 3D objects
-            this.#view.scene.add(this.#clickPoint);
-        } else {
-            const pos = this.#clickPoint.geometry.attributes.position;
-            pos.array = pointTypedArr;
-            pos.needsUpdate = true;
+        if (this.#clickPoint.visible === false) {
+            this.#clickPoint.visible = true;
         }
 
-        this.#view.notifyChange(true);
+        const terrainWorldCoordinates = this.#view.pickTerrainCoordinates(event);
+        this.updatePointPosition(this.#clickPoint, terrainWorldCoordinates);
 
         const elevationText = this.getElevationText(event, terrainWorldCoordinates);
+
+        const pointVec3 = terrainWorldCoordinates.toVector3();
         this.updateLabel(elevationText, pointVec3);
+
+        this.#view.notifyChange(true);
     }
 
     /**
      * Updates move point position on zoom
      */
     onZoom() {
-        const terrainWorldCoordinates = this.#view.pickTerrainCoordinates(this.#previousMouseMoveEvent);
-        const pointVec3 = terrainWorldCoordinates.toVector3();
-        const pointTypedArr = new Float32Array(pointVec3.toArray());
-
-        if (!this.#movePoint) {
-            const pointGeom = new THREE.BufferGeometry();
-            pointGeom.setAttribute('position', new THREE.BufferAttribute(pointTypedArr, 3));
-            this.#movePoint = new THREE.Points(pointGeom, this.movePointMaterial);
-            this.#movePoint.frustumCulled = false; // Avoid the point to be frustum culled when zooming in.
-            this.#movePoint.renderOrder = 1; // allows to render the point above the other 3D objects
-            this.#view.scene.add(this.#movePoint);
-        } else {
-            const pos = this.#movePoint.geometry.attributes.position;
-            pos.array = pointTypedArr;
-            pos.needsUpdate = true;
+        if (this.#movePoint.visible === false) {
+            this.#movePoint.visible = true;
         }
+
+        const terrainWorldCoordinates = this.#view.pickTerrainCoordinates(event);
+        this.updatePointPosition(this.#movePoint, terrainWorldCoordinates);
+
         this.#view.notifyChange();
     }
 
@@ -289,7 +292,7 @@ class ElevationMeasure extends Widget {
         // to enable sorting objects based on that distance afterwards.
         for (const obj of pickedObjs) {
             if (!obj.distance) {
-                if (obj.isTileMesh) {
+                if (obj.object.isTileMesh) {
                     obj.distance = this.computeTerrainDistance(terrainWorldCoordinates);
                 } else {
                     console.warn('[Elevation measure widget]: Picked object that are not of type TileMesh should have' +

@@ -41,9 +41,10 @@
 
             // Define camera initial position
             const placement = {
-                coord: new itowns.Coordinates('EPSG:4326', -0.526821, 45.008766),
-                range: 1000,
-                tilt: 30,
+                coord: new itowns.Coordinates('EPSG:4326', 4.830119, 45.771966),
+                range: 3000,
+                tilt: 25,
+                heading: 10,
             }
 
             // `viewerDiv` contains iTowns' rendering area (`<canvas>`)
@@ -79,9 +80,10 @@
             itowns.Fetcher.json('layers/JSONLayers/IGN_MNT_HIGHRES.json').then(addElevationLayerFromConfig);
 
             // 3D Tiles Layer
+            // TODO: waiting for PR on itowns sample data repo to be accepted
             itowns.enableDracoLoader('./libs/draco/');
             const bordeaux3DSource = new itowns.C3DTilesSource({
-                url: 'http://bg-test-soft-3d-fn.ciril.lan/3dtiles-bordeaux-without-texture/tileset.json'
+                url: 'http://localhost/3dtiles-lyon-1-4978-with-textures-compressed/tileset.json'
             });
             const bordeaux3DLayer = new itowns.C3DTilesLayer('bordeaux', {
                 name: 'bordeaux',
@@ -93,6 +95,10 @@
             // ---------- ADD ELEVATION MEASUREMENT WIDGET : ----------
 
             const elevationMeasure = new itowns_widgets.ElevationMeasure(view);
+
+            // ---------- ADD LIGHTS ----------------------------------
+            var ambLight = new itowns.THREE.AmbientLight(0xffffff);
+            view.scene.add( ambLight );
 
             // ---------- DEBUG TOOLS : ----------
 
