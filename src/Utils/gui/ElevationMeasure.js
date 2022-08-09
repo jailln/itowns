@@ -28,6 +28,12 @@ const MOVE_POINT_MATERIAL = new THREE.PointsMaterial({
 const CLICK_POINT_MATERIAL = MOVE_POINT_MATERIAL.clone();
 CLICK_POINT_MATERIAL.color.set(0xffffff);
 
+// Constants for garbage collector optimization
+const pickedCoord = new Coordinates();
+const pickedCoord4326 = new Coordinates('EPSG:4326');
+const cameraPos = new THREE.Vector3();
+const cameraPosGeo = new Coordinates();
+
 /**
  * Widget to measure the elevation in the 3D scene. Click anywhere in the scene to measure and display the elevation.
  * Works on all layers that can be added to itowns: 3D Tiles, terrain, etc.
@@ -127,6 +133,10 @@ class ElevationMeasure extends Widget {
         }
 
         this.#view = view;
+        // set constants coordinates crs
+        pickedCoord.setCrs(this.#view.referenceCrs);
+        cameraPosGeo.setCrs(this.#view.referenceCrs);
+
         this.#active = false;
         this.domElement.id = 'widgets-elevation';
 
@@ -316,12 +326,11 @@ class ElevationMeasure extends Widget {
         if (closestObj.object.isTileMesh) {
             elevationText = this.computeTerrainElevationText(terrainWorldCoordinates);
         } else if (closestObj.object.isPoints) {
-            const pickedPoint = new Coordinates(this.#view.referenceCrs, closestObj.position.x, closestObj.position.y,
-                closestObj.position.z);
-            elevationText = this.compute3DObjectElevationText(pickedPoint);
+            pickedCoord.setFromVector3(closestObj.position);
+            elevationText = this.compute3DObjectElevationText(pickedCoord);
         } else if (closestObj.object.isMesh) {
-            const pickedPoint = new Coordinates(this.#view.referenceCrs, closestObj.point);
-            elevationText = this.compute3DObjectElevationText(pickedPoint);
+            pickedCoord.setFromVector3(closestObj.point);
+            elevationText = this.compute3DObjectElevationText(pickedCoord);
         } else {
             console.error('[Elevation measure widget]: Unknown picked object type.');
         }
@@ -335,10 +344,9 @@ class ElevationMeasure extends Widget {
      * @return {Number} the spatial euclidean distance between the point and the camera
      */
     computeDistanceToCamera(point) {
-        const cameraPos = new THREE.Vector3();
         this.#view.camera.camera3D.getWorldPosition(cameraPos);
-        const cameraPosGeographic = new Coordinates(this.#view.referenceCrs, cameraPos);
-        return point.spatialEuclideanDistanceTo(cameraPosGeographic);
+        cameraPosGeo.setFromVector3(cameraPos);
+        return point.spatialEuclideanDistanceTo(cameraPosGeo);
     }
 
     /**
@@ -364,9 +372,8 @@ class ElevationMeasure extends Widget {
      */
     compute3DObjectElevationText(point) {
         // convert the point to 4326 to get elevation
-        const pickedPoint4326 = new Coordinates('EPSG:4326');
-        point.as('EPSG:4326', pickedPoint4326);
-        return `${pickedPoint4326.z.toFixed(this.decimals)} m`;
+        point.as('EPSG:4326', pickedCoord4326);
+        return `${pickedCoord4326.z.toFixed(this.decimals)} m`;
     }
 
     /**
