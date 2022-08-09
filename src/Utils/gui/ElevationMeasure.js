@@ -284,7 +284,7 @@ class ElevationMeasure extends Widget {
             this.#movePoint.visible = true;
         }
 
-        const terrainWorldCoordinates = this.#view.pickTerrainCoordinates(event);
+        const terrainWorldCoordinates = this.#view.pickTerrainCoordinates(this.#previousMouseMoveEvent);
         this.updatePointPosition(this.#movePoint, terrainWorldCoordinates);
 
         this.#view.notifyChange();
