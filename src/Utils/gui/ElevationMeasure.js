@@ -324,7 +324,7 @@ class ElevationMeasure extends Widget {
         const closestObj = pickedObjs[0];
 
         if (closestObj.object.isTileMesh) {
-            elevationText = this.computeTerrainElevationText(terrainWorldCoordinates);
+            elevationText = this.computeTerrainElevationText(terrainWorldCoordinates, closestObj.object);
         } else if (closestObj.object.isPoints) {
             pickedCoord.setFromVector3(closestObj.position);
             elevationText = this.compute3DObjectElevationText(pickedCoord);
@@ -352,11 +352,12 @@ class ElevationMeasure extends Widget {
     /**
      * Computes the elevation and the elevation text to display from a point on the terrain in the 3D scene
      * (in world coordinates)
-     * @param {Coordiantes} terrainCoord The 3D coordinates of the terrain point
+     * @param {Coordinates} terrainCoord The 3D coordinates of the terrain point
+     * @param {TileMesh} tile The picked terrain tile (used to look up elevation)
      * @return {String} The elevation text to display in the label
      */
-    computeTerrainElevationText(terrainCoord) {
-        const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, terrainCoord);
+    computeTerrainElevationText(terrainCoord, tile) {
+        const elevation = DEMUtils.getElevationValueAt(this.#view.tileLayer, terrainCoord, DEMUtils.PRECISE_READ_Z, [tile]);
         if (elevation !== null && elevation !== undefined && !isNaN(elevation)) {
             return `${elevation.toFixed(this.decimals)} m`;
         } else {
