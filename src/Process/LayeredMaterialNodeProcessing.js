@@ -237,6 +237,9 @@ export function updateLayeredMaterialNodeElevation(context, layer, node, parent)
 
 export function removeLayeredMaterialNodeLayer(layerId) {
     return function removeLayeredMaterialNodeLayer(node) {
+        if (node.geometry) {
+            node.geometry.dispose();
+        }
         if (node.material?.removeLayer) {
             node.material.removeLayer(layerId);
             if (node.material.elevationLayerIds[0] == layerId) {

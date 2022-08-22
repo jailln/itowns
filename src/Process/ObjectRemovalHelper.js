@@ -1,3 +1,14 @@
+function disposeSingleMaterialAndTextures(material) {
+    material.dispose();
+    // dispose textures
+    for (const key of Object.keys(material)) {
+        const val = material[key];
+        if (val && val.isTexture) {
+            val.dispose();
+        }
+    }
+}
+
 export default {
     /**
      * Cleanup obj to release three.js allocated resources
@@ -6,7 +17,8 @@ export default {
     cleanup(obj) {
         obj.layer = null;
 
-        if (typeof obj.dispose === 'function') {
+        // THREE.Scene dispose function displays a deprecation message
+        if (!obj.isScene && typeof obj.dispose === 'function') {
             obj.dispose();
         } else {
             if (obj.geometry) {
@@ -20,10 +32,10 @@ export default {
             if (obj.material) {
                 if (Array.isArray(obj.material)) {
                     for (const material of obj.material) {
-                        material.dispose();
+                        disposeSingleMaterialAndTextures(material);
                     }
                 } else {
-                    obj.material.dispose();
+                    disposeSingleMaterialAndTextures(obj.material);
                 }
             }
             obj.dispatchEvent({ type: 'dispose' });
@@ -44,7 +56,7 @@ export default {
     },
 
     /**
-     * Remove obj's children belonging to a layer and cleanup objexts.
+     * Remove an obj and all its children belonging to a layer and only cleanup the obj (and not its children).
      * obj will be disposed but its children **won't**!
      * @param {Layer} layer The layer that objects must belong to. Other object are ignored
      * @param {Object3D} obj The Object3D we want to clean
@@ -61,7 +73,7 @@ export default {
     },
 
     /**
-     * Recursively remove obj's children belonging to a layer.
+     * Recursively remove an obj and all its children belonging to a layer.
      * All removed obj will have their geometry/material disposed.
      * @param {Layer} layer The layer that objects must belong to. Other object are ignored
      * @param {Object3D} obj The Object3D we want to clean
