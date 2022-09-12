@@ -267,8 +267,8 @@ export function computeNodeSSE(camera, node) {
         boundingVolumeSphere.copy(node.boundingVolume.sphere);
         boundingVolumeSphere.applyMatrix4(node.matrixWorld);
         // TODO: see https://github.com/iTowns/itowns/issues/800
-        node.distance = Math.max(0.0,
-            boundingVolumeSphere.distanceToPoint(camera.camera3D.position));
+        const dist = boundingVolumeSphere.distanceToPoint(camera.camera3D.position);
+        node.distance = Math.max(0.0, dist);
     } else {
         return Infinity;
     }
@@ -276,7 +276,8 @@ export function computeNodeSSE(camera, node) {
         // This test is needed in case geometricError = distance = 0
         return Infinity;
     }
-    return camera._preSSE * (node.geometricError / node.distance);
+    const sse = camera._preSSE * (node.geometricError / node.distance);
+    return sse;
 }
 
 export function init3dTilesLayer(view, scheduler, layer, rootTile) {
@@ -328,7 +329,21 @@ export function process3dTilesNode(cullingTest = $3dTilesCulling, subdivisionTes
         }
 
         // do proper culling
-        const isVisible = cullingTest ? (!cullingTest(layer, context.camera, node, node.matrixWorld)) : true;
+        // if (!node.userData.metadata.content && node.parent.userData.metadata.content.uri === 'Data/L17_233.b3dm') {
+        //     console.log('no content: ');
+        //     console.log(node);
+        // }
+        // if (node.userData.metadata.content && node.userData.metadata.content.uri === 'Data/L16_21.b3dm') {
+        //     console.log('L16');
+        // }
+        // if (node.userData.metadata.content && node.userData.metadata.content.uri === 'Data/L17_233.b3dm') {
+        //     console.log('L17');
+        // }
+        // if (node.userData.metadata.content && node.userData.metadata.content.uri === 'Data/213/L18_2131.b3dm') {
+        //     console.log('L18');
+        // }
+        // const isVisible = cullingTest ? (!cullingTest(layer, context.camera, node, node.matrixWorld)) : true;
+        const isVisible = true;
         node.visible = isVisible;
 
         if (isVisible) {
