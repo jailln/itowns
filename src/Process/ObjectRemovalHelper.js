@@ -80,6 +80,8 @@ export default {
      * @return {Array} an array of removed Object3D from obj (not including the recursive removals)
      */
     removeChildrenAndCleanupRecursively(layer, obj) {
+        // Objects are filtered by id because the obj hierarchy may also contain labels that have been added as childs
+        // of the objects which have their own removal logic
         let toRemove = obj.children.filter(c => (c.layer && c.layer.id) === layer.id);
         if (obj.link) {
             toRemove = toRemove.concat(obj.link);

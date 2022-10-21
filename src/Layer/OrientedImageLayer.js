@@ -108,10 +108,14 @@ class OrientedImageLayer extends GeometryLayer {
         }
         super(id, new THREE.Group(), config);
 
-        this.background = config.background || createBackground(config.backgroundDistance);
         this.isOrientedImageLayer = true;
 
+        this.background = config.background || createBackground(config.backgroundDistance);
+
         if (this.background) {
+            // Add layer id to easily identify the objects later on (e.g. to delete the geometries when deleting the layer)
+            this.background.layer = this.background.layer ?? {};
+            this.background.layer.id = this.background.layer.id ?? id;
             this.object3d.add(this.background);
         }
 
@@ -208,6 +212,10 @@ class OrientedImageLayer extends GeometryLayer {
     * @param {boolean} [clearCache=false] Whether to clear the layer cache or not
     */
     delete(clearCache) {
+        if (this.background) {
+            // only delete geometries if it has some
+            super.delete();
+        }
         if (clearCache) {
             this.cache.clear();
         }
