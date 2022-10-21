@@ -64,6 +64,8 @@ Several specific types of `Layers` exist, the use of which depends on the data t
 | :---: | :---: | :---: |
 | A simple `ColorLayer` is displayed | An `ElevationLayer` is added to represent terrain elevation | A `GeometryLayer` is added to model the buildings |
 
+Note that `{@link ColorLayer}` and `{@link ElevationLayer}` don't have their own geometry and are always *attached* to a `{@link GeometryLayer}` (generally the layer representing the geometry of the globe or of the plane). `{@link ColorLayer}` are projected onto this `{@link GeometryLayer}` and `{@link ElevationLayer}` are used to read elevation and to apply it to a `{@link GeometryLayer}`.
+
 ***
 
 ## Style
