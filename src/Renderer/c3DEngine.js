@@ -61,6 +61,10 @@ class c3DEngine {
 
         this.renderView = function _(view) {
             this.renderer.clear();
+            if (this.tilesRenderer) {
+                view.camera.camera3D.updateMatrixWorld();
+                this.tilesRenderer.update(); // DIRTY
+            }
             this.renderer.render(view.scene, view.camera3D);
             if (view.tileLayer) {
                 this.label2dRenderer.render(view.tileLayer.object3d, view.camera3D);
@@ -248,6 +252,21 @@ class c3DEngine {
         image.src = canvas.toDataURL();
 
         return image;
+    }
+
+    getUniqueThreejsLayer() {
+        // We use three.js Object3D.layers feature to manage visibility of
+        // geometry layers; so we need an internal counter to assign a new
+        // one to each new geometry layer.
+        // Warning: only 32 ([0, 31]) different layers can exist.
+        if (this._nextThreejsLayer > 31) {
+            console.warn('Too much three.js layers. Starting from now all of them will use layerMask = 31');
+            this._nextThreejsLayer = 31;
+        }
+
+        const result = this._nextThreejsLayer++;
+
+        return result;
     }
 
     depthBufferRGBAValueToOrthoZ(depthBufferRGBA, camera) {
