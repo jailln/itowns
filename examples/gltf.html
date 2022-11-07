@@ -1,0 +1,104 @@
+<html>
+    <head>
+        <title>Itowns - GLTF example</title>
+
+        <meta charset="UTF-8">
+        <link rel="stylesheet" type="text/css" href="css/example.css">
+        <link rel="stylesheet" type="text/css" href="css/LoadingScreen.css">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.6/dat.gui.min.js"></script>
+    </head>
+    <body>
+        <div id="viewerDiv" class="viewer"></div>
+        <script src="../dist/itowns.js"></script>
+        <script src="js/GUI/LoadingScreen.js"></script>
+        <script src="../dist/debug.js"></script>
+        <script src="js/GUI/GuiTools.js"></script>
+        <script src="js/3dTilesHelper.js"></script>
+        <script> var THREE = itowns.THREE; </script>
+        <script src="libs/three.gltfLoader.js"> </script>
+        <script type="text/javascript">
+            // Define crs projection that we will use (taken from https://epsg.io/3946, Proj4js section)
+            itowns.proj4.defs('EPSG:3946', '+proj=lcc +lat_1=45.25 +lat_2=46.75 +lat_0=46 +lon_0=3 +x_0=1700000 +y_0=5200000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
+
+            // Define geographic extent: CRS, min/max X, min/max Y
+            var extent = new itowns.Extent( 'EPSG:3946',
+                1837816.94334, 1847692.32501,
+                5170036.4587, 5178412.82698);
+
+            // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
+            var viewerDiv = document.getElementById('viewerDiv');
+
+            // Instanciate PlanarView*
+            var cameraCoord = new itowns.Coordinates('EPSG:3946', 1841980,
+                5175682, 3000)
+            var view = new itowns.PlanarView(viewerDiv, extent, { placement: {
+                coord: cameraCoord, heading: 30, range: 4000, tilt: 30 } });
+
+            setupLoadingScreen(viewerDiv, view);
+
+
+            function computeCameraRange(view, boundingBox) {
+                var size = new THREE.Vector3();
+                boundingBox.getSize(size);
+                var dimensions = { x: size.y, y: size.x };
+
+                // Only works for perspective camera
+                const verticalFOV = THREE.Math.degToRad(view.camera.camera3D.fov);
+                if (dimensions.x / dimensions.y > view.camera.camera3D.aspect) {
+                    const focal = (view.domElement.clientHeight * 0.5) / Math.tan(verticalFOV * 0.5);
+                    const horizontalFOV = 2 * Math.atan(view.domElement.clientWidth * 0.5 / focal);
+                    return dimensions.x / (2 * Math.tan(horizontalFOV * 0.5));
+                } else {
+                    return dimensions.y / (2 * Math.tan(verticalFOV * 0.5));
+                }
+            }
+
+            // Load GLTF
+            var gltfLoader = new THREE.GLTFLoader();
+            var onLoadGltf = function(gltf) {
+                console.log(gltf);
+
+                view.scene.add(gltf.scene);
+                view.scene.animations.push(...gltf.scene.animations);
+                // zoom to object
+                var boundingBox = new THREE.Box3();
+                boundingBox.setFromObject(gltf.scene);
+
+                var center = new THREE.Vector3();
+                boundingBox.getCenter(center);
+                var range = computeCameraRange(view, boundingBox);
+                var cameraTransformOptions = {
+                    coord: new itowns.Coordinates(view.referenceCrs, center),
+                    tilt: 45,
+                    heading: 0,
+                    range: range,
+                };
+                itowns.CameraUtils.transformCameraToLookAtTarget(view, view.camera.camera3D, cameraTransformOptions);
+            };
+
+            gltfLoader.load(
+                'http://localhost/gltf/theboss.glb',
+                onLoadGltf,
+                function (xhr) {
+                    console.info( 'Loading gltf... ' + Math.floor( xhr.loaded / xhr.total * 100 ) + '%' );
+                },
+                function (error) {
+                    console.log(error);
+                }
+            );
+           
+            // Lights
+            var dirLight = new itowns.THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(-0.9, 0.3, 1);
+            dirLight.updateMatrixWorld();
+            view.scene.add( dirLight );
+
+            var ambLight = new itowns.THREE.AmbientLight(0xffffff, 0.2);
+            view.scene.add( ambLight );
+
+            // Request redraw
+            view.notifyChange();
+        </script>
+    </body>
+</html>
