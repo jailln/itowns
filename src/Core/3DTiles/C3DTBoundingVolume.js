@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import Extent from '../Geographic/Extent';
+import Coordinates from '../Geographic/Coordinates';
 import OBB from '../../Renderer/OBB';
 import C3DTilesTypes from './C3DTilesTypes';
 
-const matrix = new THREE.Matrix4();
+const identityMatrix = new THREE.Matrix4();
 const center = new THREE.Vector3();
 const size = new THREE.Vector3();
-const extent = new Extent('EPSG:4326', 0, 0, 0, 0);
 const sphereCenter = new THREE.Vector3();
 const worldCoordinateCenter = new THREE.Vector3();
 
@@ -47,24 +47,20 @@ class C3DTBoundingVolume {
         }
     }
 
-    initBoundingRegion(region, inverseTileTransform) {
-        extent.set(THREE.MathUtils.radToDeg(region[0]),
-            THREE.MathUtils.radToDeg(region[2]),
-            THREE.MathUtils.radToDeg(region[1]),
-            THREE.MathUtils.radToDeg(region[3]));
-        const regionBox = new OBB();
-        regionBox.setFromExtent(extent);
-        regionBox.updateZ({ min: region[4], max: region[5] });
-        // at this point box.matrix = box.epsg4978_from_local, so
-        // we transform it in parent_from_local by using parent's
-        // epsg4978_from_local which from our point of view is
-        // epsg4978_from_parent. box.matrix = (epsg4978_from_parent ^ -1) *
-        // epsg4978_from_local =  parent_from_epsg4978 * epsg4978_from_local =
-        // parent_from_local
-        regionBox.matrix.premultiply(inverseTileTransform);
-        // update position, rotation and scale
-        regionBox.matrix.decompose(regionBox.position, regionBox.quaternion, regionBox.scale);
-        this.region = regionBox;
+    // Bounding regions define the bounding geographic region with lat long and height coordinates with the order
+    // [west, south, east, north, minimum height, maximum height]. For more information, see 
+    // [bounding region spec](https://github.com/CesiumGS/3d-tiles/tree/main/specification#region) for more information
+    initBoundingRegion(region) {
+        // the bounding region is represented by an OBB which requires lower and upper boundaries to be initialized.
+        // Convert the lower and upper boundaries of the bounding box in the globe CRS (4978) since bounding regions are
+        // only used for tilesets in 4326/4979 (i.e. to be displayed in a globe view)
+        const lowerBoundary4326 = new Coordinates('EPSG:4326', THREE.MathUtils.radToDeg(region[0]), THREE.MathUtils.radToDeg(region[1]), region[4]);
+        const lowerBoundary4978 = new Coordinates('EPSG:4978');
+        lowerBoundary4326.as('EPSG:4978', lowerBoundary4978);
+        const upperBoundary4326 = new Coordinates('EPSG:4326', THREE.MathUtils.radToDeg(region[2]), THREE.MathUtils.radToDeg(region[3]), region[5]);
+        const upperBoundary4978 = new Coordinates('EPSG:4978');
+        upperBoundary4326.as('EPSG:4978', upperBoundary4978);
+        this.region = new OBB(lowerBoundary4978, upperBoundary4978);
     }
 
     initBoundingBox(box) {
@@ -85,8 +81,7 @@ class C3DTBoundingVolume {
 
     boundingVolumeCulling(camera, tileMatrixWorld) {
         if (this.region &&
-            !camera.isBox3Visible(this.region.box3D,
-                matrix.multiplyMatrices(tileMatrixWorld, this.region.matrix))) {
+            !camera.isBox3Visible(this.region.box3D, identityMatrix)) {
             return true;
         }
         if (this.box && !camera.isBox3Visible(this.box,
