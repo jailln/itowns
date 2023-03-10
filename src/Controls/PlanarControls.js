@@ -658,6 +658,8 @@ class PlanarControls extends THREE.EventDispatcher {
      * @ignore
      */
     initiateTravel(targetPos, travelTime, targetOrientation, useSmooth) {
+
+        console.log(targetOrientation)
         this.state = STATE.TRAVEL;
         this.view.notifyChange(this.camera);
         // the progress of the travel (animation alpha)
@@ -669,7 +671,6 @@ class PlanarControls extends THREE.EventDispatcher {
             && targetOrientation
             && (targetOrientation.isQuaternion || targetOrientation.isVector3);
         travelUseSmooth = useSmooth;
-
         // start position (current camera position)
         travelStartPos.copy(this.camera.position);
 
@@ -677,7 +678,7 @@ class PlanarControls extends THREE.EventDispatcher {
         travelStartRot.copy(this.camera.quaternion);
 
         // setup the end rotation :
-        if (travelUseRotation) {
+        if (travelUseRotation ) {
             if (targetOrientation.isQuaternion) {
                 // case where targetOrientation is a quaternion
                 travelEndRot.copy(targetOrientation);
@@ -693,7 +694,7 @@ class PlanarControls extends THREE.EventDispatcher {
                     travelEndRot.copy(this.camera.quaternion);
                     this.camera.quaternion.copy(travelStartRot);
                     this.camera.position.copy(travelStartPos);
-                }
+                } 
             }
         }
 
@@ -734,6 +735,7 @@ class PlanarControls extends THREE.EventDispatcher {
             // case where travelTime !== `auto` : travelTime is a duration in seconds given as parameter
             travelDuration = travelTime;
         }
+        
     }
 
     /**
@@ -743,11 +745,13 @@ class PlanarControls extends THREE.EventDispatcher {
      * @ignore
      */
     handleTravel(dt) {
+        
         travelAlpha = Math.min(travelAlpha + (dt / 1000) / travelDuration, 1);
 
         // the animation alpha, between 0 (start) and 1 (finish)
         const alpha = (travelUseSmooth) ? this.smooth(travelAlpha) : travelAlpha;
-
+        console.log("alpha " + alpha)
+        
         // new position
         this.camera.position.lerpVectors(
             travelStartPos,
@@ -768,13 +772,35 @@ class PlanarControls extends THREE.EventDispatcher {
                 travelStartRot,
                 travelEndRot,
                 alpha,
-            );
+            ); 
         }
 
         // completion test
         this.testAnimationEnd();
     }
 
+
+    handleTravelNew(dt) {      // frequently called via update
+        
+        travelAlpha = Math.min(travelAlpha + (dt / 1000) / travelDuration, 1);
+
+        // the animation alpha, between 0 (start) and 1 (finish)
+        const alpha = (travelUseSmooth) ? this.smooth(travelAlpha) : travelAlpha;
+        console.log("alpha " + alpha)
+        console.log("dt " + dt)
+        console.log("travelDuration " + travelDuration)
+        console.log("travelAlpha " + travelAlpha)
+        // new position
+        this.camera.position.lerpVectors(       // ici maj pos
+            travelStartPos,
+            travelEndPos,
+            alpha,
+        );
+
+      
+        // completion test
+        this.testAnimationEnd();
+    }
     /**
      * Test if the currently running animation is finished (travelAlpha reached 1).
      * If it is, reset controls to state NONE.
