@@ -51,6 +51,7 @@ class C3DTilesLayer extends GeometryLayer {
      * is set up. config.overrideMaterials can also be a threejs [Material](https://threejs.org/docs/index.html?q=material#api/en/materials/Material)
      * in which case it will be used as the material for all objects of the layer.
      * @param {C3DTExtensions} [config.registeredExtensions] 3D Tiles extensions managers registered for this tileset.
+     * @param {String} [config.pntsMode] PointsMaterials Mode for cloud points (COLOR,INTENSITY,CLASSIFICATION,NORMAL).
      * @param  {View}  view  The view
      */
     constructor(id, config, view) {
@@ -63,6 +64,7 @@ class C3DTilesLayer extends GeometryLayer {
         this.overrideMaterials = config.overrideMaterials ?? false;
         this.name = config.name;
         this.registeredExtensions = config.registeredExtensions || new C3DTExtensions();
+        this.pntsMode = config.pntsMode ?? "COLOR";
 
         this._cleanableTiles = [];
 

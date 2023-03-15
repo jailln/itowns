@@ -4,6 +4,7 @@ import PntsParser from 'Parser/PntsParser';
 import Fetcher from 'Provider/Fetcher';
 import ReferLayerProperties from 'Layer/ReferencingLayerProperties';
 import utf8Decoder from 'Utils/Utf8Decoder';
+import PointsMaterial, { MODE } from 'Renderer/PointsMaterial';
 
 function b3dmToMesh(data, layer, url) {
     const urlBase = THREE.LoaderUtils.extractUrlBase(url);
@@ -28,7 +29,7 @@ function pntsParse(data, layer) {
     return PntsParser.parse(data, layer.registeredExtensions).then((result) => {
         const material = layer.material ?
             layer.material.clone() :
-            new THREE.PointsMaterial({ size: 0.05, vertexColors: true });
+            new PointsMaterial({ size: 0.05, mode: MODE[layer.pntsMode.toUpperCase()]});
 
         // refer material properties in the layer so when layers opacity and visibility is updated, the material is
         // automatically updated
