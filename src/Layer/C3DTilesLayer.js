@@ -51,7 +51,7 @@ class C3DTilesLayer extends GeometryLayer {
      * is set up. config.overrideMaterials can also be a threejs [Material](https://threejs.org/docs/index.html?q=material#api/en/materials/Material)
      * in which case it will be used as the material for all objects of the layer.
      * @param {C3DTExtensions} [config.registeredExtensions] 3D Tiles extensions managers registered for this tileset.
-     * @param {String} [config.pntsMode] PointsMaterials Mode for cloud points (COLOR,INTENSITY,CLASSIFICATION,NORMAL).
+     * @param {String} [config.pntsMode='COLOR'] {@link PointsMaterials} Point cloud coloring mode. Only 'COLOR' or 'CLASSIFICATION' are possible. COLOR uses RGB colors of the points, CLASSIFICATION uses a classification property of the batch table to color points.
      * @param  {View}  view  The view
      */
     constructor(id, config, view) {
@@ -64,7 +64,15 @@ class C3DTilesLayer extends GeometryLayer {
         this.overrideMaterials = config.overrideMaterials ?? false;
         this.name = config.name;
         this.registeredExtensions = config.registeredExtensions || new C3DTExtensions();
-        this.pntsMode = config.pntsMode ?? "COLOR";
+        
+        this.pntsMode = 'COLOR';
+        if(config.pntsMode){
+            if(!(config.pntsMode = config.pntsMode.toUpperCase()) == 'CLASSIFICATION')       
+                console.warn("The points cloud mode is not CLASSIFICATION");
+            else
+                this.pntsMode = config.pntsMode
+        }
+
 
         this._cleanableTiles = [];
 
