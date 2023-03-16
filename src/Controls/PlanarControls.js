@@ -658,7 +658,6 @@ class PlanarControls extends THREE.EventDispatcher {
      * @ignore
      */
     initiateTravel(targetPos, travelTime, targetOrientation, useSmooth) {
-        console.log(targetOrientation);
         this.state = STATE.TRAVEL;
         this.view.notifyChange(this.camera);
         // the progress of the travel (animation alpha)
