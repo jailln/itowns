@@ -854,7 +854,7 @@ class GlobeControls extends THREE.EventDispatcher {
 
 
         range = range * (event.delta > 0 ? 1 / 0.9 : 0.9);
-        if (point && (range > this.minDistance && range < this.maxDistance)) {
+        if (point && (range > this.minDistance && range < this.maxDistance)) {  //check if the zoom is in the allowed interval
 
 
             console.log("this.camera.position");
@@ -891,17 +891,36 @@ class GlobeControls extends THREE.EventDispatcher {
 
 
             point = new Coordinates('EPSG:4978', point).as('EPSG:4326').toVector3();
+
+            console.log("point()ORG : ");
+        console.log(point);
             point.z = 0;
+            if(camPos.x * point.x < 0){     //try to correct rotation at 180th meridian 
+                if(camPos.x - point.x > 180) 
+                    point.x += 360;
+                else if(point.x - camPos.x > 180)
+                    camPos.x += 360;
+ 
+            }
+            console.log("camPos() : ")
+            console.log(camPos)
             console.log("point() : ")
             console.log(point)
-            point.lerpVectors(  // point interpol
+            point.lerpVectors(  // point interpol   between mouse curosr and cam pos
                 // this.getLookAtCoordinate().toVector3(),
                 camPos,
                 point,
                 (event.delta > 0 ? -0.05 : alpha), //interpol factor
+                // (event.delta > 0 ? -0.05 : 0.5), //interpol factor
             );
 
             console.log("interp() : ")
+            console.log( point);
+            if(point.x > 180)   //try to correct rotation at 180th meridian                 
+                point.x -= 360;  
+ 
+            
+            console.log("interp() +meridia : ")
             console.log( point);
 
 
@@ -914,7 +933,7 @@ class GlobeControls extends THREE.EventDispatcher {
             pickedPosition.copy(point);
 
 
-            return this.lookAtCoordinate({       //(recup de zoom double click)
+            return this.lookAtCoordinate({       //update view to the interpolate point
                 coord: new Coordinates('EPSG:4978', point),
                 // range: range * (event.delta > 0 ? 1 / 0.9 : 0.9),
                 range : range,
