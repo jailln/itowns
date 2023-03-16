@@ -67,7 +67,7 @@ class C3DTilesLayer extends GeometryLayer {
         
         this.pntsMode = 'COLOR';
         if(config.pntsMode){
-            if(!(config.pntsMode = config.pntsMode.toUpperCase()) == 'CLASSIFICATION')       
+            if(!((config.pntsMode = config.pntsMode.toUpperCase()) == 'CLASSIFICATION'))       
                 console.warn("The points cloud mode is not CLASSIFICATION");
             else
                 this.pntsMode = config.pntsMode
