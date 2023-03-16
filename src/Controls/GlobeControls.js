@@ -690,14 +690,14 @@ class GlobeControls extends THREE.EventDispatcher {
         }
     }
 
+
     updateTarget() {
         // Check if the middle of the screen is on the globe (to prevent having a dark-screen bug if outside the globe)
-       if (this.view.getPickingPositionFromDepth(null, pickedPosition)) {
-
+        if (this.view.getPickingPositionFromDepth(null, pickedPosition)) {
             // Update camera's target position
             const distance = !isNaN(pickedPosition.x) ? this.camera.position.distanceTo(pickedPosition) : 100;
             targetPosition.set(0, 0, -distance);
-            
+
             this.camera.localToWorld(targetPosition);
 
 
@@ -707,48 +707,7 @@ class GlobeControls extends THREE.EventDispatcher {
             targetPosition.copy(this.camera.position);
             targetPosition.applyMatrix4(cameraTarget.matrixWorldInverse);
             spherical.setFromVector3(targetPosition);
-       }
-    }
-
-    updateTarget2(newPos = null) {
-        console.log(newPos)
-        // Check if the middle of the screen is on the globe (to prevent having a dark-screen bug if outside the globe)
-       if (this.view.getPickingPositionFromDepth(null, pickedPosition)) {
-
-            // Update camera's target position
-            const distance = !isNaN(pickedPosition.x) ? this.camera.position.distanceTo(pickedPosition) : 100;
-            targetPosition.set(0, 0, -distance);
-            
-            this.camera.localToWorld(targetPosition);
-
-
-            // set new camera target on globe
-            positionObject(targetPosition, cameraTarget);
-            cameraTarget.matrixWorldInverse.copy(cameraTarget.matrixWorld).invert();
-            targetPosition.copy(this.camera.position);
-            targetPosition.applyMatrix4(cameraTarget.matrixWorldInverse);
-            spherical.setFromVector3(targetPosition);
-       }
-    }
-
-    updateTargetBAK() {
-        // Check if the middle of the screen is on the globe (to prevent having a dark-screen bug if outside the globe)
-       if (this.view.getPickingPositionFromDepth(null, pickedPosition)) {
-
-            // Update camera's target position
-            const distance = !isNaN(pickedPosition.x) ? this.camera.position.distanceTo(pickedPosition) : 100;
-            targetPosition.set(0, 0, -distance);
-            
-            this.camera.localToWorld(targetPosition);
-
-
-            // set new camera target on globe
-            positionObject(targetPosition, cameraTarget);
-            cameraTarget.matrixWorldInverse.copy(cameraTarget.matrixWorld).invert();
-            targetPosition.copy(this.camera.position);
-            targetPosition.applyMatrix4(cameraTarget.matrixWorldInverse);
-            spherical.setFromVector3(targetPosition);
-       }
+        }
     }
 
     handlingEvent(current) {
@@ -804,68 +763,43 @@ class GlobeControls extends THREE.EventDispatcher {
     }
 
 
-    handleZoomBak(event) {
-        this.player.stop();
-        CameraUtils.stop(this.view, this.camera);
-        this.updateTarget(event.viewCoords); 
-        const delta = -event.delta;
-        this.dolly(delta);
-
-        const previousRange = this.getRange(pickedPosition);
-        this.update();
-        
-        const newRange = this.getRange(pickedPosition); 
-        if (Math.abs(newRange - previousRange) / previousRange > 0.001) {
-            this.dispatchEvent({
-                type: CONTROL_EVENTS.RANGE_CHANGED,
-                previous: previousRange,
-                new: newRange,
-            });
-        }
-        this.dispatchEvent(this.startEvent);
-        this.dispatchEvent(this.endEvent);
-        
-
-
-    }
     handleZoom(event) {
-
         this.player.stop();
         CameraUtils.stop(this.view, this.camera);
 
 
 
-        
-        var point = this.view.getPickingPositionFromDepth(event.viewCoords);        //position de la souris
+
+        var point = this.view.getPickingPositionFromDepth(event.viewCoords);        // position de la souris
         this.view.getPickingPositionFromDepth(null, pickedPosition);
         var range = this.getRange(pickedPosition);
-        // var alpha = range > 10000000 ? 0.25 : range > 1000000 ? 0.2 : range > 100000 ? 0.15 : range > 10000 ? 0.15 : 0.15;  //0.25 
-        var alpha = 0.15
+        // var alpha = range > 10000000 ? 0.25 : range > 1000000 ? 0.2 : range > 100000 ? 0.15 : range > 10000 ? 0.15 : 0.15;  //0.25
+        var alpha = range > 1000000 ? 0.13 : 0.1;  // 0.25
+        console.log(range);
+        console.log(alpha);
 
-        range = range * (event.delta > 0 ? 1 / 0.9 : 0.9);
-        if (point && (range > this.minDistance && range < this.maxDistance)) {  //check if the zoom is in the allowed interval
 
+        range *= (event.delta > 0 ? 1 / 0.9 : 0.9);
+        if (point && (range > this.minDistance && range < this.maxDistance)) {  // check if the zoom is in the allowed interval
             const camPos = this.getLookAtCoordinate().toVector3();
             camPos.z = 0;
 
 
             point = new Coordinates('EPSG:4978', point).as('EPSG:4326').toVector3();
             point.z = 0;
-            if(camPos.x * point.x < 0){     //try to correct rotation at 180th meridian 
-                if(camPos.x - point.x > 180) 
-                    point.x += 360;
-                else if(point.x - camPos.x > 180)
-                    camPos.x += 360; 
+            if (camPos.x * point.x < 0) {     // try to correct rotation at 180th meridian
+                if (camPos.x - point.x > 180) { point.x += 360; } else if (point.x - camPos.x > 180) { camPos.x += 360; }
             }
 
-            point.lerpVectors(  // point interpol   between mouse curosr and cam pos
+            point.lerpVectors(  // point interpol between mouse curosr and cam pos
                 camPos,
                 point,
-                (event.delta > 0 ? -0.05 : alpha), //interpol factor
+                (event.delta > 0 ? -0.05 : alpha), // interpol factor
             );
 
-            if(point.x > 180)   //try to correct rotation at 180th meridian                 
-                point.x -= 360;  
+            if (point.x > 180) {  // try to correct rotation at 180th meridian
+                point.x -= 360;
+            }
 
 
             point = new Coordinates('EPSG:4326', point).as('EPSG:4978').toVector3();
@@ -873,13 +807,11 @@ class GlobeControls extends THREE.EventDispatcher {
             pickedPosition.copy(point);
 
 
-            return this.lookAtCoordinate({       //update view to the interpolate point
+            return this.lookAtCoordinate({       // update view to the interpolate point
                 coord: new Coordinates('EPSG:4978', point),
-                range : range,
-                },
-                false);
-
-
+                range,
+            },
+            false);
         }
     }
 
@@ -1284,8 +1216,8 @@ class GlobeControls extends THREE.EventDispatcher {
                 });
         } else {
             return CameraUtils.transformCameraToLookAtTarget(this.view, this.camera, params).then((result) => {
-               cameraTarget.position.copy(result.targetWorldPosition);
-               this.handlingEvent(result);
+                cameraTarget.position.copy(result.targetWorldPosition);
+                this.handlingEvent(result);
                 return result;
             });
         }
