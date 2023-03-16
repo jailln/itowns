@@ -830,10 +830,6 @@ class GlobeControls extends THREE.EventDispatcher {
     }
     handleZoom(event) {
 
-      /*  event.viewCoords.x = 890;
-        event.viewCoords.y = 128;
-        event.delta = -125;*/
-        
         this.player.stop();
         CameraUtils.stop(this.view, this.camera);
 
@@ -842,150 +838,48 @@ class GlobeControls extends THREE.EventDispatcher {
         
         var point = this.view.getPickingPositionFromDepth(event.viewCoords);        //position de la souris
         this.view.getPickingPositionFromDepth(null, pickedPosition);
-        // var range = this.getRange(point);
         var range = this.getRange(pickedPosition);
-        console.log(point)
         // var alpha = range > 10000000 ? 0.25 : range > 1000000 ? 0.2 : range > 100000 ? 0.15 : range > 10000 ? 0.15 : 0.15;  //0.25 
         var alpha = 0.15
-        console.log("range() : ")
-        console.log(range)
-        console.log("event.delta")
-        console.log(event.delta)
-
 
         range = range * (event.delta > 0 ? 1 / 0.9 : 0.9);
         if (point && (range > this.minDistance && range < this.maxDistance)) {  //check if the zoom is in the allowed interval
-
-
-            console.log("this.camera.position");
-            console.log(this.camera.position);
-
-            // alpha =0.91
-            const travelStartPos = new THREE.Vector3();
-            travelStartPos.copy(this.camera.position);
-            console.log("tilt: " + this.getTilt(this.camera))
-
-            var rotVec = new THREE.Vector3(1, 0, 0);
-          //  travelStartPos.applyAxisAngle(rotVec, THREE.MathUtils.degToRad(-this.getTilt(this.camera)))
-            //var oldTilt
-
-         
-            console.log("getCameraCoordinate() : " + this.getCameraCoordinate())
-            console.log(this.getCameraCoordinate())
-            console.log("getLookAtCoordinate() : " + this.getLookAtCoordinate())
-            console.log(this.getLookAtCoordinate())
-            console.log("getCameraTargetPosition() : " + this.getCameraTargetPosition())
-            console.log(this.getCameraTargetPosition())
-            console.log(new Coordinates('EPSG:4978', this.getCameraTargetPosition()).as('EPSG:4326'))
-            
-
-
-           /* point.lerpVectors(  // point interpol
-                this.getCameraTargetPosition(),
-                point,
-                (event.delta > 0 ? -0.05 : alpha*0.3), //interpol factor
-            ); */
 
             const camPos = this.getLookAtCoordinate().toVector3();
             camPos.z = 0;
 
 
             point = new Coordinates('EPSG:4978', point).as('EPSG:4326').toVector3();
-
-            console.log("point()ORG : ");
-        console.log(point);
             point.z = 0;
             if(camPos.x * point.x < 0){     //try to correct rotation at 180th meridian 
                 if(camPos.x - point.x > 180) 
                     point.x += 360;
                 else if(point.x - camPos.x > 180)
-                    camPos.x += 360;
- 
+                    camPos.x += 360; 
             }
-            console.log("camPos() : ")
-            console.log(camPos)
-            console.log("point() : ")
-            console.log(point)
+
             point.lerpVectors(  // point interpol   between mouse curosr and cam pos
-                // this.getLookAtCoordinate().toVector3(),
                 camPos,
                 point,
                 (event.delta > 0 ? -0.05 : alpha), //interpol factor
-                // (event.delta > 0 ? -0.05 : 0.5), //interpol factor
             );
 
-            console.log("interp() : ")
-            console.log( point);
             if(point.x > 180)   //try to correct rotation at 180th meridian                 
                 point.x -= 360;  
- 
-            
-            console.log("interp() +meridia : ")
-            console.log( point);
 
 
             point = new Coordinates('EPSG:4326', point).as('EPSG:4978').toVector3();
 
-            console.log("interp() + conver : ")
-            console.log( point);
-           
-            // range = this.getRange(point)
             pickedPosition.copy(point);
 
 
             return this.lookAtCoordinate({       //update view to the interpolate point
                 coord: new Coordinates('EPSG:4978', point),
-                // range: range * (event.delta > 0 ? 1 / 0.9 : 0.9),
                 range : range,
-             //   tilt : this.getTilt(this.camera),
                 },
                 false);
 
-/*
-pickedPosition.copy(point);
 
-const distance = !isNaN(pickedPosition.x) ? this.camera.position.distanceTo(pickedPosition) : 100;
-targetPosition.set( event.viewCoords.x,  event.viewCoords.y, -distance);
-
-positionObject(targetPosition, cameraTarget);
-
-
-cameraTarget.matrixWorldInverse.copy(cameraTarget.matrixWorld).invert();
-            targetPosition.copy(this.camera.position);
-            targetPosition.applyMatrix4(cameraTarget.matrixWorldInverse);
-            spherical.setFromVector3(targetPosition);
-
-            this.update();*/
-        
-
-    
- /*
-        
-        //Recup  depuis planar
-        const point = this.view.getPickingPositionFromDepth(event.viewCoords);
-        const travelStartPos = new THREE.Vector3();
-        travelStartPos.copy(this.camera.position);
-        
-        this.camera.position.lerpVectors(
-            this.camera.position,
-            point,
-            (event.delta > 0 ? -0.5 : 0.5), //interpol factor
-        );
-        // this.camera.position.lerpVectors(       // ici maj pos
-        //     travelStartPos,
-        //     point,
-        //     1,       
-        // );
-
-pickedPosition.copy(point);
-        
-        console.log(this.getCameraOrientation());
-
-        console.log(this.getLookAtCoordinate())
-        this.dispatchEvent(this.startEvent);
-        this.dispatchEvent(this.endEvent);
-        this.view.notifyChange(this.camera);    //necessaire pour refresh view
-*/
         }
     }
 
