@@ -29,7 +29,7 @@ function pntsParse(data, layer) {
     return PntsParser.parse(data, layer.registeredExtensions).then((result) => {
         const material = layer.material ?
             layer.material.clone() :
-            new PointsMaterial({ size: 0.05, mode: layer.pntsMode});
+            new PointsMaterial({ size: 0.05, mode: layer.pntsMode });
 
         // refer material properties in the layer so when layers opacity and visibility is updated, the material is
         // automatically updated
@@ -42,9 +42,9 @@ function pntsParse(data, layer) {
             points.position.copy(result.point.offset);
         }
 
-        return { object3d: points ,
-                 batchTable: result.batchTable,
-                };
+        return { object3d: points,
+            batchTable: result.batchTable,
+        };
     });
 }
 

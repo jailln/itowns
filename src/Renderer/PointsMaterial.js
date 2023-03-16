@@ -72,10 +72,16 @@ class PointsMaterial extends THREE.RawShaderMaterial {
         const oiMaterial = options.orientedImageMaterial;
         const classification = options.classification || ClassificationScheme.DEFAULT;
         const applyOpacityClassication = options.applyOpacityClassication == undefined ? false : options.applyOpacityClassication;
+        const size = options.size || 0;
+        const mode = options.mode || MODE.COLOR;
+
         delete options.orientedImageMaterial;
         delete options.intensityRange;
         delete options.classification;
         delete options.applyOpacityClassication;
+        delete options.size;
+        delete options.mode;
+
         super(options);
 
         this.vertexShader = PointsVS;
@@ -84,8 +90,8 @@ class PointsMaterial extends THREE.RawShaderMaterial {
 
         CommonMaterial.setDefineMapping(this, 'MODE', MODE);
 
-        CommonMaterial.setUniformProperty(this, 'size', options.size || 0);
-        CommonMaterial.setUniformProperty(this, 'mode', options.mode || MODE.COLOR);
+        CommonMaterial.setUniformProperty(this, 'size', size);
+        CommonMaterial.setUniformProperty(this, 'mode', mode);
         CommonMaterial.setUniformProperty(this, 'picking', false);
         CommonMaterial.setUniformProperty(this, 'opacity', this.opacity);
         CommonMaterial.setUniformProperty(this, 'overlayColor', options.overlayColor || new THREE.Vector4(0, 0, 0, 0));

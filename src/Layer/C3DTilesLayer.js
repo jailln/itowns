@@ -65,14 +65,11 @@ class C3DTilesLayer extends GeometryLayer {
         this.overrideMaterials = config.overrideMaterials ?? false;
         this.name = config.name;
         this.registeredExtensions = config.registeredExtensions || new C3DTExtensions();
-        
+
         this.pntsMode = 'COLOR';
-        if(config.pntsMode){
+        if (config.pntsMode) {
             config.pntsMode = config.pntsMode.toUpperCase();
-            if(MODE[config.pntsMode] === undefined)       
-                console.warn("The points cloud mode doesn't exist");
-            else
-                this.pntsMode = MODE[config.pntsMode];
+            if (MODE[config.pntsMode] === undefined) { console.warn("The points cloud mode doesn't exist. Use 'COLOR' or 'CLASSIFICATION' instead."); } else { this.pntsMode = MODE[config.pntsMode]; }
         }
 
 
