@@ -767,19 +767,16 @@ class GlobeControls extends THREE.EventDispatcher {
         this.player.stop();
         CameraUtils.stop(this.view, this.camera);
 
-
-
+        const dezoom_interp = 1.05;    // Interpolation factor used to unzoom
 
         var point = this.view.getPickingPositionFromDepth(event.viewCoords);        // position de la souris
         this.view.getPickingPositionFromDepth(null, pickedPosition);
         var range = this.getRange(pickedPosition);
-        // var alpha = range > 10000000 ? 0.25 : range > 1000000 ? 0.2 : range > 100000 ? 0.15 : range > 10000 ? 0.15 : 0.15;  //0.25
-        var alpha = range > 1000000 ? 0.13 : 0.1;  // 0.25
-        console.log(range);
-        console.log(alpha);
+        const alpha = range > 1000000 ? 0.87 : 0.9;  //  Interpolation factor used to zoom
 
-
+        
         range *= (event.delta > 0 ? 1 / 0.9 : 0.9);
+
         if (point && (range > this.minDistance && range < this.maxDistance)) {  // check if the zoom is in the allowed interval
             const camPos = this.getLookAtCoordinate().toVector3();
             camPos.z = 0;
@@ -787,17 +784,19 @@ class GlobeControls extends THREE.EventDispatcher {
 
             point = new Coordinates('EPSG:4978', point).as('EPSG:4326').toVector3();
             point.z = 0;
-            if (camPos.x * point.x < 0) {     // try to correct rotation at 180th meridian
+            if (camPos.x * point.x < 0) {     // Correct rotation at 180th meridian by using 0 <= longitude <=360
                 if (camPos.x - point.x > 180) { point.x += 360; } else if (point.x - camPos.x > 180) { camPos.x += 360; }
             }
 
-            point.lerpVectors(  // point interpol between mouse curosr and cam pos
-                camPos,
-                point,
-                (event.delta > 0 ? -0.05 : alpha), // interpol factor
+
+            point.lerp(  // point interpol between mouse curosr and cam pos
+                camPos,                
+                (event.delta > 0 ? dezoom_interp : alpha), // interpol factor
             );
 
-            if (point.x > 180) {  // try to correct rotation at 180th meridian
+
+
+            if (point.x > 180) {  // Correct rotation at 180th meridian
                 point.x -= 360;
             }
 
