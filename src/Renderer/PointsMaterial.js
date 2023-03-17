@@ -5,7 +5,7 @@ import Capabilities from 'Core/System/Capabilities';
 import ShaderUtils from 'Renderer/Shader/ShaderUtils';
 import CommonMaterial from 'Renderer/CommonMaterial';
 
-export const MODE = {
+export const PNTS_MODE = {
     COLOR: 0,
     INTENSITY: 1,
     CLASSIFICATION: 2,
@@ -54,7 +54,7 @@ class PointsMaterial extends THREE.RawShaderMaterial {
      * @class      PointsMaterial
      * @param      {object}  [options={}]  The options
      * @param      {number}  [options.size=0]  size point
-     * @param      {number}  [options.mode=MODE.COLOR]  display mode.
+     * @param      {number}  [options.mode=PNTS_MODE.COLOR]  display mode.
      * @param      {THREE.Vector4}  [options.overlayColor=new THREE.Vector4(0, 0, 0, 0)]  overlay color.
      * @param      {THREE.Vector2}  [options.intensityRange=new THREE.Vector2(0, 1)]  intensity range.
      * @param      {boolean}  [options.applyOpacityClassication=false]  apply opacity classification on all display mode.
@@ -73,7 +73,7 @@ class PointsMaterial extends THREE.RawShaderMaterial {
         const classification = options.classification || ClassificationScheme.DEFAULT;
         const applyOpacityClassication = options.applyOpacityClassication == undefined ? false : options.applyOpacityClassication;
         const size = options.size || 0;
-        const mode = options.mode || MODE.COLOR;
+        const mode = options.mode || PNTS_MODE.COLOR;
 
         delete options.orientedImageMaterial;
         delete options.intensityRange;
@@ -88,7 +88,7 @@ class PointsMaterial extends THREE.RawShaderMaterial {
 
         this.scale = options.scale || 0.05 * 0.5 / Math.tan(1.0 / 2.0); // autosizing scale
 
-        CommonMaterial.setDefineMapping(this, 'MODE', MODE);
+        CommonMaterial.setDefineMapping(this, 'PNTS_MODE', PNTS_MODE);
 
         CommonMaterial.setUniformProperty(this, 'size', size);
         CommonMaterial.setUniformProperty(this, 'mode', mode);
