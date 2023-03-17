@@ -28,8 +28,6 @@ function subDomains(url) {
  * @module URLBuilder
  */
 export default {
-    subDomains,
-
     /**
      * Builds an URL knowing the coordinates and the source to query.
      * <br><br>

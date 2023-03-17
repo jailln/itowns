@@ -113,10 +113,7 @@ function drawFeature(ctx, feature, extent, style, invCtxScale) {
             const contextStyle = (geometry.properties.style || style).drawingStylefromContext(context);
 
             if (contextStyle) {
-                if (
-                    feature.type === FEATURE_TYPES.POINT
-                    && contextStyle.point
-                ) {
+                if (feature.type === FEATURE_TYPES.POINT) {
                     // cross multiplication to know in the extent system the real size of
                     // the point
                     const px = (Math.round(contextStyle.point.radius * invCtxScale) || 3 * invCtxScale) * scaleRadius;

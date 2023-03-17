@@ -5,6 +5,7 @@ import { ellipsoidSizes } from 'Core/Math/Ellipsoid';
 import CameraUtils from 'Utils/CameraUtils';
 import StateControl from 'Controls/StateControl';
 import { VIEW_EVENTS } from 'Core/View';
+import { Camera } from 'three';
 
 // private members
 const EPS = 0.000001;
@@ -156,30 +157,20 @@ let previous;
  * @param      {GlobeView}  view the view where the control will be used
  * @param      {CameraTransformOptions|Extent} placement   the {@link CameraTransformOptions} to apply to view's camera
  * or the extent it must display at initialisation, see {@link CameraTransformOptions} in {@link CameraUtils}.
- * @param      {object}  [options] An object with one or more configuration properties. Any property of GlobeControls
- * can be passed in this object.
- * @property      {number}  zoomFactor The factor the scale is multiplied by when dollying (zooming) in or
- * divided by when dollying out. Default is 2.
- * @property      {number}  rotateSpeed Speed camera rotation in orbit and panoramic mode. Default is 0.25.
- * @property      {number}  minDistance Minimum distance between ground and camera in meters (Perspective Camera only).
- * Default is 250.
- * @property      {number}  maxDistance Maximum distance between ground and camera in meters
- * (Perspective Camera only). Default is ellipsoid radius * 8.
- * @property      {number}  minZoom How far you can zoom in, in meters (Orthographic Camera only). Default is 0.
- * @property      {number}  maxZoom How far you can zoom out, in meters (Orthographic Camera only). Default
- * is Infinity.
- * @property      {number}  keyPanSpeed Number of pixels moved per push on array key. Default is 7.
- * @property      {number}  minPolarAngle Minimum vertical orbit angle (in degrees). Default is 0.5.
- * @property      {number}  maxPolarAngle Maximum vertical orbit angle (in degrees). Default is 86.
- * @property      {number}  minAzimuthAngle Minimum horizontal orbit angle (in degrees). If modified,
- * should be in [-180,0]. Default is -Infinity.
- * @property      {number}  maxAzimuthAngle Maximum horizontal orbit angle (in degrees). If modified,
- * should be in [0,180]. Default is Infinity.
- * @property      {boolean} handleCollision Handle collision between camera and ground or not, i.e. whether
- * you can zoom underground or not. Default is true.
- * @property      {boolean} enableDamping Enable damping or not (simulates the lag that a real camera
- * operator introduces while operating a heavy physical camera). Default is true.
- * @property      {boolean} dampingMoveFactor the damping move factor. Default is 0.25.
+ * @param      {object}  options
+ * @param      {number}  [options.zoomFactor=2] The factor the scale is multiplied by when dollying (zooming) in or
+ * divided by when dollying out.
+ * @param      {number}  options.rotateSpeed Speed camera rotation in orbit and panoramic mode
+ * @param      {number}  options.minDistance Minimum distance between ground and camera
+ * @param      {number}  options.maxDistance Maximum distance between ground and camera
+ * @param      {bool}  options.handleCollision enable collision camera with ground
+ * @property   {number} minDistance Minimum distance between ground and camera
+ * @property   {number} maxDistance Maximum distance between ground and camera
+ * @property   {number} zoomSpeed Speed zoom with mouse
+ * @property   {number} rotateSpeed Speed camera rotation in orbit and panoramic mode
+ * @property   {number} minDistanceCollision Minimum distance collision between ground and camera
+ * @property   {boolean} enableDamping enable camera damping, if it's disabled the camera immediately when the mouse button is released.
+ * If it's enabled, the camera movement is decelerate.
  */
 class GlobeControls extends THREE.EventDispatcher {
     constructor(view, placement, options = {}) {
@@ -206,7 +197,7 @@ class GlobeControls extends THREE.EventDispatcher {
         // These options actually enables dollying in and out; left as "zoom" for
         // backwards compatibility
         if (options.zoomSpeed) {
-            console.warn('Controls zoomSpeed parameter is deprecated. Use zoomFactor instead.');
+            console.warn('Controls zoomSpeed parameter is deprecated. Use zoomInFactor and zoomOutFactor instead.');
             options.zoomFactor = options.zoomFactor || options.zoomSpeed;
         }
         this.zoomFactor = options.zoomFactor || 1.25;
@@ -216,25 +207,25 @@ class GlobeControls extends THREE.EventDispatcher {
         this.maxDistance = options.maxDistance || ellipsoidSizes.x * 8.0;
 
         // Limits to how far you can zoom in and out ( OrthographicCamera only )
-        this.minZoom = options.minZoom || 0;
-        this.maxZoom = options.maxZoom || Infinity;
+        this.minZoom = 0;
+        this.maxZoom = Infinity;
 
         // Set to true to disable this control
         this.rotateSpeed = options.rotateSpeed || 0.25;
 
         // Set to true to disable this control
-        this.keyPanSpeed = options.keyPanSpeed || 7.0; // pixels moved per arrow key push
+        this.keyPanSpeed = 7.0; // pixels moved per arrow key push
 
         // How far you can orbit vertically, upper and lower limits.
         // Range is 0 to Math.PI radians.
         // TODO Warning minPolarAngle = 0.01 -> it isn't possible to be perpendicular on Globe
-        this.minPolarAngle = THREE.MathUtils.degToRad(options.minPolarAngle ?? 0.5);
-        this.maxPolarAngle = THREE.MathUtils.degToRad(options.minPolarAngle ?? 86);
+        this.minPolarAngle = THREE.MathUtils.degToRad(0.5); // radians
+        this.maxPolarAngle = THREE.MathUtils.degToRad(86); // radians
 
         // How far you can orbit horizontally, upper and lower limits.
         // If set, must be a sub-interval of the interval [ - Math.PI, Math.PI ].
-        this.minAzimuthAngle = options.minAzimuthAngle ? THREE.MathUtils.degToRad(options.minAzimuthAngle) : -Infinity; // radians
-        this.maxAzimuthAngle = options.maxAzimuthAngle ? THREE.MathUtils.degToRad(options.maxAzimuthAngle) : Infinity; // radians
+        this.minAzimuthAngle = -Infinity; // radians
+        this.maxAzimuthAngle = Infinity; // radians
 
         // Set collision options
         this.handleCollision = typeof (options.handleCollision) !== 'undefined' ? options.handleCollision : true;
@@ -253,7 +244,7 @@ class GlobeControls extends THREE.EventDispatcher {
         });
 
         // Enable Damping
-        this.enableDamping = options.enableDamping !== false;
+        this.enableDamping = true;
         this.dampingMoveFactor = options.dampingMoveFactor != undefined ? options.dampingMoveFactor : dampingFactorDefault;
 
         this.startEvent = {
@@ -305,6 +296,10 @@ class GlobeControls extends THREE.EventDispatcher {
         if (enableTargetHelper) {
             cameraTarget.add(helpers.target);
             view.scene.add(helpers.picking);
+            const layerTHREEjs = view.mainLoop.gfxEngine.getUniqueThreejsLayer();
+            helpers.target.layers.set(layerTHREEjs);
+            helpers.picking.layers.set(layerTHREEjs);
+            this.camera.layers.enable(layerTHREEjs);
         }
 
         if (placement.isExtent) {

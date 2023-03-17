@@ -12,7 +12,6 @@ import { getMaxColorSamplerUnitsCount } from 'Renderer/LayeredMaterial';
 import Scheduler from 'Core/Scheduler/Scheduler';
 import Picking from 'Core/Picking';
 import LabelLayer from 'Layer/LabelLayer';
-import ObjectRemovalHelper from 'Process/ObjectRemovalHelper';
 
 export const VIEW_EVENTS = {
     /**
@@ -40,6 +39,21 @@ export const VIEW_EVENTS = {
  * @property {string} type  dblclick-right
  */
 
+
+const _syncGeometryLayerVisibility = function _syncGeometryLayerVisibility(layer, view) {
+    if (layer.object3d) {
+        layer.object3d.visible = layer.visible;
+    }
+
+    if (layer.threejsLayer) {
+        if (layer.visible) {
+            view.camera.camera3D.layers.enable(layer.threejsLayer);
+        } else {
+            view.camera.camera3D.layers.disable(layer.threejsLayer);
+        }
+    }
+};
+
 function _preprocessLayer(view, layer, parentLayer) {
     const source = layer.source;
     if (parentLayer && !layer.extent) {
@@ -50,6 +64,13 @@ function _preprocessLayer(view, layer, parentLayer) {
     }
 
     if (layer.isGeometryLayer) {
+        if (parentLayer) {
+            // layer.threejsLayer *must* be assigned before preprocessing,
+            // because TileProvider.preprocessDataLayer function uses it.
+            layer.threejsLayer = view.mainLoop.gfxEngine.getUniqueThreejsLayer();
+        }
+        layer.defineLayerProperty('visible', true, () => _syncGeometryLayerVisibility(layer, view));
+        _syncGeometryLayerVisibility(layer, view);
         // Find crs projection layer, this is projection destination
         layer.crs = view.referenceCrs;
     } else if (!layer.crs) {
@@ -145,7 +166,6 @@ class View extends THREE.EventDispatcher {
      * @param {?Scene} [options.scene3D] - [THREE.Scene](https://threejs.org/docs/#api/en/scenes/Scene) instance to use, otherwise a default one will be constructed
      * @param {?Color} options.diffuse - [THREE.Color](https://threejs.org/docs/?q=color#api/en/math/Color) Diffuse color terrain material.
      * This color is applied to terrain if there isn't color layer on terrain extent (by example on pole).
-     * @param {boolean} [options.enableFocusOnStart=true] - enable focus on dom element on start.
      *
      * @constructor
      */
@@ -174,7 +194,7 @@ class View extends THREE.EventDispatcher {
 
         this.scene = options.scene3D || new THREE.Scene();
         if (!options.scene3D) {
-            this.scene.matrixWorldAutoUpdate = false;
+            this.scene.autoUpdate = false;
         }
 
         this.camera = new Camera(
@@ -185,8 +205,7 @@ class View extends THREE.EventDispatcher {
 
         this._frameRequesters = { };
 
-        this._resizeListener = () => this.resize();
-        window.addEventListener('resize', this._resizeListener, false);
+        window.addEventListener('resize', () => this.resize(), false);
 
         this._changeSources = new Set();
 
@@ -222,9 +241,7 @@ class View extends THREE.EventDispatcher {
         // focused sequentially using tab key). Focus is needed to capture some key events.
         this.domElement.tabIndex = -1;
         // Set focus on view's domElement.
-        if (!options.disableFocusOnStart) {
-            this.domElement.focus();
-        }
+        this.domElement.focus();
 
         // Create a custom `dblclick-right` event that is triggered when double right-clicking
         let rightClickTimeStamp;
@@ -237,6 +254,19 @@ class View extends THREE.EventDispatcher {
                 rightClickTimeStamp = event.timeStamp;
             }
         });
+
+        // configure dynamic opacity
+        if (options.altitudeForZeroOpacity === undefined || options.altitudeForZeroOpacity === null) {
+            this.altitudeForZeroOpacity = 420;
+        } else {
+            this.altitudeForZeroOpacity = options.altitudeForZeroOpacity;
+        }
+
+        if (options.altitudeForFullOpacity === undefined || options.altitudeForFullOpacity === null) {
+            this.altitudeForFullOpacity = 2400;
+        } else {
+            this.altitudeForFullOpacity = options.altitudeForFullOpacity;
+        }
 
 
         // push all viewer to keep source.cache
@@ -251,44 +281,48 @@ class View extends THREE.EventDispatcher {
      * - remove all layers
      * - remove all frame requester
      * - remove all events
-     * @param {boolean} [clearCache=false] Whether to clear all the caches or not (layers cache, style cache, tilesCache)
      */
-    dispose(clearCache = false) {
+    dispose() {
         const id = viewers.indexOf(this);
         if (id == -1) {
             console.warn('View already disposed');
             return;
         }
-
-        window.removeEventListener('resize', this._resizeListener);
-
         // controls dispose
-        if (this.controls) {
-            if (typeof this.controls.dispose === 'function') {
-                this.controls.dispose();
-            }
-            delete this.controls;
+        if (this.controls && this.controls.dispose) {
+            this.controls.dispose();
         }
         // remove alls frameRequester
         this.removeAllFrameRequesters();
         // remove alls events
         this.removeAllEvents();
-        // remove all layers
+        // remove alls layers
         const layers = this.getLayers(l => !l.isTiledGeometryLayer && !l.isAtmosphere);
         for (const layer of layers) {
-            this.removeLayer(layer.id, clearCache);
+            this.removeLayer(layer.id);
         }
         const atmospheres = this.getLayers(l => l.isAtmosphere);
         for (const atmosphere of atmospheres) {
-            this.removeLayer(atmosphere.id, clearCache);
+            this.removeLayer(atmosphere.id);
         }
         const tileLayers = this.getLayers(l => l.isTiledGeometryLayer);
         for (const tileLayer of tileLayers) {
-            this.removeLayer(tileLayer.id, clearCache);
+            this.removeLayer(tileLayer.id);
         }
         viewers.splice(id, 1);
-        // Remove remaining objects in the scene (e.g. helpers, debug, etc.)
-        this.scene.traverse(ObjectRemovalHelper.cleanup);
+    }
+
+    altitudeForZeroOpacity;
+    altitudeForFullOpacity;
+    updateVariableOpacityLayer() {
+        var cameraTargetPosition = this.controls.getLookAtCoordinate();
+        var cameraTargetPosition2 = new Coordinates('EPSG:4326', cameraTargetPosition).as('EPSG:3946');
+        var cameraPosition = this.camera.position('EPSG:3946');
+
+        const distance = Math.sqrt(((cameraTargetPosition2.x - cameraPosition.x) * (cameraTargetPosition2.x - cameraPosition.x)  + (cameraTargetPosition2.y - cameraPosition.y) * (cameraTargetPosition2.y - cameraPosition.y) + (cameraTargetPosition2.z - cameraPosition.z) * (cameraTargetPosition2.z - cameraPosition.z)));
+
+        var opacity = THREE.MathUtils.clamp((distance - this.altitudeForZeroOpacity) / (this.altitudeForFullOpacity - this.altitudeForZeroOpacity), 0, 1);
+        this.tileLayer.opacity = opacity;
     }
 
     /**
@@ -367,17 +401,16 @@ class View extends THREE.EventDispatcher {
      * Removes a specific imagery layer from the current layer list. This removes layers inserted with attach().
      * @example
      * view.removeLayer('layerId');
-     * @param {string} layerId The identifier
-     * @param {boolean} [clearCache=false] Whether to clear all the layer cache or not
-     * @return {boolean}
+     * @param      {string}   layerId      The identifier
+     * @return     {boolean}
      */
-    removeLayer(layerId, clearCache) {
+    removeLayer(layerId) {
         const layer = this.getLayerById(layerId);
         if (layer) {
             const parentLayer = layer.parent;
 
             // Remove and dispose all nodes
-            layer.delete(clearCache);
+            layer.delete();
 
             // Detach layer if it's attached
             if (parentLayer && !parentLayer.detach(layer)) {
@@ -729,9 +762,6 @@ class View extends THREE.EventDispatcher {
         const mouse = (mouseOrEvt instanceof Event) ? this.eventToViewCoords(mouseOrEvt) : mouseOrEvt;
 
         for (const source of sources) {
-            if (source.isAtmosphere) {
-                continue;
-            }
             if (source.isGeometryLayer) {
                 if (!source.ready) {
                     console.warn('view.pickObjectAt : layer is not ready : ', source);
@@ -983,6 +1013,10 @@ class View extends THREE.EventDispatcher {
         mouse.x = Math.floor(mouse.x);
         mouse.y = Math.floor(mouse.y);
 
+        // Prepare state
+        const prev = camera.layers.mask;
+        camera.layers.mask = 1 << this.tileLayer.threejsLayer;
+
         // Render/Read to buffer
         let buffer;
         if (viewPaused) {
@@ -1025,6 +1059,8 @@ class View extends THREE.EventDispatcher {
             target.set(screen.x, screen.y, gl_FragCoord_Z);
             target.unproject(camera);
         }
+
+        camera.layers.mask = prev;
 
         if (target.length() > 10000000) { return undefined; }
 
@@ -1092,11 +1128,6 @@ class View extends THREE.EventDispatcher {
      * the viewer with. By default it is the `clientHeight` of the `viewerDiv`.
      */
     resize(width, height) {
-        if (width < 0 || height < 0) {
-            console.warn(`Trying to resize the View with negative height (${height}) or width (${width}). Skipping resize.`);
-            return;
-        }
-
         if (width == undefined) {
             width = this.domElement.clientWidth;
         }
@@ -1107,10 +1138,8 @@ class View extends THREE.EventDispatcher {
 
         this.#fullSizeDepthBuffer = new Uint8Array(4 * width * height);
         this.mainLoop.gfxEngine.onWindowResize(width, height);
-        if (width !== 0 && height !== 0) {
-            this.camera.resize(width, height);
-            this.notifyChange(this.camera.camera3D);
-        }
+        this.camera.resize(width, height);
+        this.notifyChange(this.camera.camera3D);
     }
 }
 

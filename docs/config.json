@@ -48,6 +48,8 @@
                 "PotreeLayer",
                 "C3DTilesLayer",
                 "LabelLayer",
+                "RasterNode",
+
                 "GlobeLayer",
                 "PlanarLayer",
                 "Atmosphere"
@@ -69,8 +71,7 @@
                 "FileSource",
                 "OrientedImageSource",
                 "PotreeSource",
-                "VectorTilesSource",
-                "EntwinePointTileSource"
+                "VectorTilesSource"
             ],
 
             "Provider": [
@@ -108,8 +109,7 @@
             "Renderer": [
                 "OrientedImageMaterial",
                 "Camera",
-                "ShaderChunkManager",
-                "RasterTile"
+                "ShaderChunkManager"
             ],
 
             "3D Tiles": [
@@ -159,14 +159,6 @@
             "Vector-data-on-ground": {
                 "sectionTitle": "Vector visualization",
                 "sectionId": 2
-            },
-            "3DTiles-mesh-b3dm": {
-                "sectionTitle": "3D Tiles visualization",
-                "sectionId": 3
-            },
-            "3DTiles-point-cloud-pnts": {
-                "sectionTitle": "3D Tiles visualization",
-                "sectionId": 3
             }
         }
     },

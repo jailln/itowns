@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import Capabilities from 'Core/System/Capabilities';
 import { unpack1K } from 'Renderer/LayeredMaterial';
-import WEBGL from 'ThreeExtended/capabilities/WebGL';
+// import WEBGL from 'ThreeExtended/capabilities/WebGL';
 import Label2DRenderer from 'Renderer/Label2DRenderer';
 
 const depthRGBA = new THREE.Vector4();
@@ -93,6 +93,7 @@ class c3DEngine {
             this.renderer = null;
         }
 
+        /*
         if (!this.renderer) {
             if (!WEBGL.isWebGLAvailable()) {
                 viewerDiv.appendChild(WEBGL.getErrorMessage(1));
@@ -102,6 +103,7 @@ class c3DEngine {
 
             throw new Error('WebGL unsupported');
         }
+        */
 
         if (!renderer && options.logarithmicDepthBuffer) {
             // We don't support logarithmicDepthBuffer when EXT_frag_depth is missing.
@@ -222,7 +224,7 @@ class c3DEngine {
 
     bufferToImage(pixelBuffer, width, height) {
         var canvas = document.createElement('canvas');
-        var ctx = canvas.getContext('2d', { willReadFrequently: true });
+        var ctx = canvas.getContext('2d');
 
         // size the canvas to your desired image
         canvas.width = width;
@@ -240,6 +242,21 @@ class c3DEngine {
         image.src = canvas.toDataURL();
 
         return image;
+    }
+
+    getUniqueThreejsLayer() {
+        // We use three.js Object3D.layers feature to manage visibility of
+        // geometry layers; so we need an internal counter to assign a new
+        // one to each new geometry layer.
+        // Warning: only 32 ([0, 31]) different layers can exist.
+        if (this._nextThreejsLayer > 31) {
+            console.warn('Too much three.js layers. Starting from now all of them will use layerMask = 31');
+            this._nextThreejsLayer = 31;
+        }
+
+        const result = this._nextThreejsLayer++;
+
+        return result;
     }
 
     depthBufferRGBAValueToOrthoZ(depthBufferRGBA, camera) {

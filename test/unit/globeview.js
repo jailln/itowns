@@ -7,7 +7,10 @@ import Extent from 'Core/Geographic/Extent';
 import Renderer from './bootstrap';
 import CameraUtils from '../../src/Utils/CameraUtils';
 import OBB from '../../src/Renderer/OBB';
-import { compareWithEpsilon } from './utils';
+
+function compareWithEpsilon(a, b, epsilon) {
+    return a - epsilon < b && a + epsilon > b;
+}
 
 describe('GlobeView', function () {
     const renderer = new Renderer();
@@ -100,8 +103,9 @@ describe('GlobeView', function () {
         new OBB().setFromExtent(extent).box3D.getSize(size);
         assert.ok(
             CameraUtils.getTransformCameraLookingAtTarget(extentViewer, camera3D).range -
-            size.x / (2 * Math.tan(THREE.MathUtils.degToRad(camera3D.fov) / 2))
+            size.x / (2 * Math.tan(THREE.Math.degToRad(camera3D.fov) / 2))
             < 10 ** -6,
         );
     });
 });
+

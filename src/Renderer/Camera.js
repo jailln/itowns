@@ -139,16 +139,12 @@ class Camera {
     }
 
     /**
-     * Resize the camera to a given width and height.
+     * Resize the camera to a given width and height
      *
-     * @param {number} width The width to resize the camera to. Must be strictly positive, won't resize otherwise.
-     * @param {number} height The height to resize the camera to. Must be strictly positive, won't resize otherwise.
+     * @param   {number}    width               The width to resize the camera to.
+     * @param   {number}    height              The height to resize the camera to.
      */
     resize(width, height) {
-        if (!width || width <= 0 || !height || height <= 0) {
-            console.warn(`Trying to resize the Camera with invalid height (${height}) or width (${width}). Skipping resize.`);
-            return;
-        }
         const ratio = width / height;
         if (this.camera3D.aspect !== ratio) {
             if (this.camera3D.isOrthographicCamera) {
@@ -157,8 +153,8 @@ class Camera {
                 this.camera3D.bottom = -halfH;
                 this.camera3D.top = halfH;
             } else if (this.camera3D.isPerspectiveCamera) {
-                this.camera3D.fov = 2 * THREE.MathUtils.radToDeg(Math.atan(
-                    (height / this.height) * Math.tan(THREE.MathUtils.degToRad(this.camera3D.fov) / 2),
+                this.camera3D.fov = 2 * THREE.Math.radToDeg(Math.atan(
+                    (height / this.height) * Math.tan(THREE.Math.degToRad(this.camera3D.fov) / 2),
                 ));
             }
             this.camera3D.aspect = ratio;

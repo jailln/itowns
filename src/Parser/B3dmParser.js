@@ -7,8 +7,6 @@ import shaderUtils from 'Renderer/Shader/ShaderUtils';
 import utf8Decoder from 'Utils/Utf8Decoder';
 import C3DTBatchTable from 'Core/3DTiles/C3DTBatchTable';
 import ReferLayerProperties from 'Layer/ReferencingLayerProperties';
-import { MeshBasicMaterial } from 'three';
-import disposeThreeMaterial from 'Utils/ThreeUtils';
 
 const matrixChangeUpVectorZtoY = (new THREE.Matrix4()).makeRotationX(Math.PI / 2);
 // For gltf rotation
@@ -80,10 +78,7 @@ export default {
      * @param {string} options.urlBase - the base url of the b3dm file (used to fetch textures for the embedded glTF model).
      * @param {boolean=} [options.doNotPatchMaterial='false'] - disable patching material with logarithmic depth buffer support.
      * @param {float} [options.opacity=1.0] - the b3dm opacity.
-     * @param {boolean|Material=} [options.overrideMaterials='false'] - override b3dm's embedded glTF materials. If
-     * true, a threejs [MeshBasicMaterial](https://threejs.org/docs/index.html?q=meshbasic#api/en/materials/MeshBasicMaterial)
-     * is set up. config.overrideMaterials can also be a threejs [Material](https://threejs.org/docs/index.html?q=material#api/en/materials/Material)
-     * in which case it will be the material used to override.
+     * @param {boolean|Material=} [options.overrideMaterials='false'] - override b3dm's embedded glTF materials. If overrideMaterials is a three.js material, it will be the material used to override.
      * @return {Promise} - a promise that resolves with an object containig a THREE.Scene (gltf) and a batch table (batchTable).
      *
      */
@@ -146,9 +141,8 @@ export default {
                 // sizeBegin is an index to the beginning of the batch table
                 const sizeBegin = headerByteLength + b3dmHeader.FTJSONLength +
                     b3dmHeader.FTBinaryLength;
-                const BTBuffer = buffer.slice(sizeBegin, sizeBegin + b3dmHeader.BTJSONLength +
-                    b3dmHeader.BTBinaryLength);
-                promises.push(new C3DTBatchTable(BTBuffer, b3dmHeader.BTJSONLength,
+                const BTBuffer = buffer.slice(sizeBegin, b3dmHeader.BTJSONLength + sizeBegin);
+                promises.push(new C3DTBatchTable(BTBuffer,
                     b3dmHeader.BTBinaryLength, FTJSON.BATCH_LENGTH, options.registeredExtensions));
             } else {
                 promises.push(Promise.resolve({}));
@@ -189,15 +183,19 @@ export default {
                         mesh.frustumCulled = false;
                         if (mesh.material) {
                             if (options.overrideMaterials) {
-                                const oldMat = mesh.material;
-                                // Set up new material
+                                if (Array.isArray(mesh.material)) {
+                                    for (const material of mesh.material) {
+                                        material.dispose();
+                                    }
+                                } else {
+                                    mesh.material.dispose();
+                                }
                                 if (typeof (options.overrideMaterials) === 'object' &&
-                                options.overrideMaterials.isMaterial) {
+                                    options.overrideMaterials.isMaterial) {
                                     mesh.material = options.overrideMaterials;
                                 } else {
-                                    mesh.material = new MeshBasicMaterial();
+                                    mesh.material.depthWrite = true;
                                 }
-                                disposeThreeMaterial(oldMat);
                             } else if (Capabilities.isLogDepthBufferSupported()
                                         && mesh.material.isRawShaderMaterial
                                         && !options.doNotPatchMaterial) {

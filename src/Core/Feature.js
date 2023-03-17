@@ -379,7 +379,7 @@ export class FeatureCollection extends THREE.Object3D {
             this.extent = options.buildExtent === false ? undefined : defaultExtent(options.forcedExtentCrs || this.crs);
             this.#setLocalSystem = (center) => {
                 // set local system center
-                center.as(this.crs, this.center);
+                center.as('EPSG:4326', this.center);
 
                 // set position to local system center
                 this.position.copy(center);

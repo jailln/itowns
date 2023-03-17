@@ -10,6 +10,10 @@ import CameraUtils from 'Utils/CameraUtils';
 
 import CRS from 'Core/Geographic/Crs';
 import { ellipsoidSizes } from 'Core/Math/Ellipsoid';
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial';
+import { Line2 } from 'three/examples/jsm/lines/Line2';
+import * as GeometryUtils from 'three/examples/jsm/utils/GeometryUtils';
 
 /**
  * Fires when the view is completely loaded. Controls and view's functions can be called then.
@@ -91,7 +95,6 @@ class GlobeView extends View {
      * in the DOM.
      * @param {CameraTransformOptions|Extent} placement - An object to place view
      * @param {object=} options - See options of {@link View}.
-     * @param {Object} options.controls - See options of {@link GlobeControls}
      */
     constructor(viewerDiv, placement = {}, options = {}) {
         THREE.Object3D.DefaultUp.set(0, 0, 1);
@@ -123,14 +126,19 @@ class GlobeView extends View {
         if (options.noControls) {
             CameraUtils.transformCameraToLookAtTarget(this, this.camera.camera3D, placement);
         } else {
-            this.controls = new GlobeControls(this, placement, options.controls);
-            this.controls.handleCollision = typeof (options.handleCollision) !== 'undefined' ? options.handleCollision : true;
+            this.controls = new GlobeControls(this, placement);
         }
 
-        this.addLayer(new Atmosphere('atmosphere', options.atmosphere));
+        var atmosphereLayer = new Atmosphere('atmosphere', options.atmosphere);
+        this.atmosphereLayer = atmosphereLayer;
+        this.addLayer(atmosphereLayer);
 
         // GlobeView needs this.camera.resize to set perpsective matrix camera
         this.camera.resize(viewerDiv.clientWidth, viewerDiv.clientHeight);
+
+        this.controls.minDistance = -50;
+        this.controls.handleCollision = false;
+        // view.mainLoop.gfxEngine.renderer.setClearColor();
     }
 
     /**

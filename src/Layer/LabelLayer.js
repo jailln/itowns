@@ -194,6 +194,7 @@ class LabelLayer extends Layer {
             layer: this,
             extentsSource: extentsDestination,
             view: context.view,
+            threejsLayer: this.threejsLayer,
             requester: node,
         };
 
@@ -289,14 +290,7 @@ class LabelLayer extends Layer {
         }
     }
 
-    /**
-     * All layer's objects and domElements are removed.
-     * @param {boolean} [clearCache=false] Whether to clear the layer cache or not
-     */
-    delete(clearCache) {
-        if (clearCache) {
-            this.cache.clear();
-        }
+    delete() {
         this.domElement.parentElement.removeChild(this.domElement);
 
         this.parent.level0Nodes.forEach(obj => this.removeLabelsFromNodeRecursive(obj));

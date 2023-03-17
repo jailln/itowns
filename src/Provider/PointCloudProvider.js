@@ -42,6 +42,7 @@ export default {
             }
             points.updateMatrix();
             points.tightbbox = geometry.boundingBox.applyMatrix4(points.matrix);
+            points.layers.set(layer.threejsLayer);
             points.layer = layer;
             points.extent = Extent.fromBox3(command.view.referenceCrs, node.bbox);
             points.userData.node = node;

@@ -1,7 +1,10 @@
 import assert from 'assert';
 import Camera, { CAMERA_TYPE } from 'Renderer/Camera';
 import Coordinates from 'Core/Geographic/Coordinates';
-import { compareWithEpsilon } from './utils';
+
+function compareWithEpsilon(a, b, epsilon) {
+    return a - epsilon < b && a + epsilon > b;
+}
 
 describe('camera', function () {
     it('should set good aspect in camera3D', function () {
