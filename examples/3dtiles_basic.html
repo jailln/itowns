@@ -23,11 +23,11 @@
         <script type="text/javascript">
             /* global itowns,document,GuiTools*/
             var placement = {
-                coord: new itowns.Coordinates('EPSG:4326', -75.6114, 40.03428, 0),
-                range: 4000,
+                coord: new itowns.Coordinates('EPSG:4326', 3.3792, 44.3335, 844),
                 tilt: 22,
-                heading: 180
-            }
+                heading: -180,
+                range: 2840
+            };
             // iTowns namespace defined here
             var viewerDiv = document.getElementById('viewerDiv');
 
@@ -49,7 +49,7 @@
                 name: 'DiscreteLOD',
                 sseThreshold: 0.05,
                 source: new itowns.C3DTilesSource({
-                    url: 'https://raw.githubusercontent.com/CesiumGS/3d-tiles-samples/master/1.0/TilesetWithDiscreteLOD/tileset.json',
+                    url: 'https://10.1.23.22/data/3dtiles/pnts-ign-gorges-saint-chely-du-tarn/tileset.json',
                 }),
             }, view);
 
