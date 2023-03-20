@@ -26,7 +26,7 @@ The following people have contributed to iTowns 2.
   * [Nicolas Saul](https://github.com/NikoSaul)
   * [Emmanuel Schmück](https://github.com/EmmanuelSchmuck/)
   * [Marie Lamure](https://github.com/mlamure)
-  * [Vincent Jaillot](https://github.com/jailln)
+
   * [Valentin Rigolle](https://github.com/Crejak)
 
 * [virtualcitySYSTEMS](https://www.virtualcitysystems.de/)
@@ -35,7 +35,10 @@ The following people have contributed to iTowns 2.
 * [Prolexia](http://prolexia.fr/)
   * [Dorian MOFFROID](https://github.com/dorian-moffroid-prolexia)
 
-The following organizations supported iTowns2 :
+* [Ciril GROUP](http://www.cirilgroup.com/)
+  * [Loïc Picavet](https://github.com/LoicUTC)
+  * [Vincent Jaillot](https://github.com/jailln)
+
+The following organizations supported iTowns :
 * IGN ( http://www.ign.fr )
-* Oslandia ( http://www.oslandia.com )
-* AtolCD ( http://www.atolcd.com )
+* Ciril GROUP ( http://www.cirilgroup.fr )
