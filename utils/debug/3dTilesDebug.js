@@ -37,9 +37,10 @@ export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) 
             if (!helper) {
                 // 3dtiles with region
                 if (metadata.boundingVolume.region) {
-                    helper = new OBBHelper(metadata.boundingVolume.region, `id:${node.id}`);
+                    bboxMesh.geometry.boundingBox = metadata.boundingVolume.region;
+                    helper = new THREE.BoxHelper(bboxMesh);
+                    helper.material.linewidth = 2;
                     regionBoundingBoxParent.add(helper);
-                    helper.updateMatrixWorld(true);
                 // 3dtiles with box
                 } else if (metadata.boundingVolume.box) {
                     bboxMesh.geometry.boundingBox = metadata.boundingVolume.box;

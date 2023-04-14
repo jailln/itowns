@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import Extent from '../Geographic/Extent';
 import OBB from '../../Renderer/OBB';
+import Coordinates from '../Geographic/Coordinates';
 import C3DTilesTypes from './C3DTilesTypes';
 
 const matrix = new THREE.Matrix4();
@@ -48,23 +49,43 @@ class C3DTBoundingVolume {
     }
 
     initBoundingRegion(region, inverseTileTransform) {
-        extent.set(THREE.MathUtils.radToDeg(region[0]),
-            THREE.MathUtils.radToDeg(region[2]),
-            THREE.MathUtils.radToDeg(region[1]),
-            THREE.MathUtils.radToDeg(region[3]));
-        const regionBox = new OBB();
-        regionBox.setFromExtent(extent);
-        regionBox.updateZ({ min: region[4], max: region[5] });
+        // TODO optim
+        var min = new Coordinates('EPSG:4326', THREE.MathUtils.radToDeg(region[0]), THREE.MathUtils.radToDeg(region[1]), region[4]); // south west corner with min height
+        var max = new Coordinates('EPSG:4326', THREE.MathUtils.radToDeg(region[2]), THREE.MathUtils.radToDeg(region[3]), region[5]); // north east corner with max height
+        var minVec3 = min.as('EPSG:4978').toVector3();
+        var maxVec3 = max.as('EPSG:4978').toVector3();
+        // TODO: temps to pass isEmpty test of threejs bounding box. Should be handled another way
+        if (minVec3.x > maxVec3.x) {
+            var x = minVec3.x;
+            minVec3.x = maxVec3.x;
+            maxVec3.x = x;
+        }
+        if (minVec3.y > maxVec3.y) {
+            var y = minVec3.y;
+            minVec3.y = maxVec3.y;
+            maxVec3.y = y;
+        }
+        this.region = new THREE.Box3(minVec3, maxVec3);
+
+        // TODO: manage the inverseTileTransform?
+
+        // extent.set(THREE.MathUtils.radToDeg(region[0]),
+        //     THREE.MathUtils.radToDeg(region[2]),
+        //     THREE.MathUtils.radToDeg(region[1]),
+        //     THREE.MathUtils.radToDeg(region[3]));
+        // const regionBox = new OBB();
+        // regionBox.setFromExtent(extent);
+        // regionBox.updateZ({ min: region[4], max: region[5] });
         // at this point box.matrix = box.epsg4978_from_local, so
         // we transform it in parent_from_local by using parent's
         // epsg4978_from_local which from our point of view is
         // epsg4978_from_parent. box.matrix = (epsg4978_from_parent ^ -1) *
         // epsg4978_from_local =  parent_from_epsg4978 * epsg4978_from_local =
         // parent_from_local
-        regionBox.matrix.premultiply(inverseTileTransform);
-        // update position, rotation and scale
-        regionBox.matrix.decompose(regionBox.position, regionBox.quaternion, regionBox.scale);
-        this.region = regionBox;
+        // regionBox.matrix.premultiply(inverseTileTransform);
+        // // update position, rotation and scale
+        // regionBox.matrix.decompose(regionBox.position, regionBox.quaternion, regionBox.scale);
+        // this.region = regionBox;
     }
 
     initBoundingBox(box) {
@@ -85,8 +106,7 @@ class C3DTBoundingVolume {
 
     boundingVolumeCulling(camera, tileMatrixWorld) {
         if (this.region &&
-            !camera.isBox3Visible(this.region.box3D,
-                matrix.multiplyMatrices(tileMatrixWorld, this.region.matrix))) {
+            !camera.isBox3Visible(this.region, tileMatrixWorld)) { // TODO: multiply matrices ?
             return true;
         }
         if (this.box && !camera.isBox3Visible(this.box,
