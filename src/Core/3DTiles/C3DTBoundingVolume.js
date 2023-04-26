@@ -50,7 +50,8 @@ class C3DTBoundingVolume {
 
     initBoundingRegion(region, inverseTileTransform) {
         // TODO optim
-        // Compute center:
+        // Try to initialize Box3  from center and size
+        // Compute center
         let east = region[2];
         const west = region[0];
         const south = region[1];
@@ -59,47 +60,79 @@ class C3DTBoundingVolume {
         const maxHeight = region[5];
 
         if (east < west) {
-            east += 2*Math.PI;
+            east += 2 * Math.PI;
         }
 
         let longitude = (west + east) * 0.5;
         if (longitude < -Math.PI || longitude > Math.PI) {
-            longitude = longitude + Math.PI;
+            longitude += Math.PI;
             if (longitude < 0 || longitude > 2 * Math.PI) {
                 const mod = longitude % (2 * Math.PI);
                 if (
                     Math.abs(mod) < 0.00000000000001 &&
                     Math.abs(longitude) > 0.00000000000001
                 ) {
-                    longitude = CesiumMath.TWO_PI;
+                    longitude = Math.PI * 2;
                 } else {
                     longitude = mod;
                 }
             }
         }
-        const latitude = (south + north) * 0.5;
-        const height = maxHeight - minHeight;
+        let latitude = (south + north) * 0.5;
 
-        const center = new itowns.Coordinates('EPSG:4326', latitude, longitude, height);
+        longitude = THREE.MathUtils.radToDeg(longitude);
+        latitude = THREE.MathUtils.radToDeg(latitude);
+        const height = (maxHeight + minHeight) / 2;
+
+        const center = new Coordinates('EPSG:4326', latitude, longitude, height);
         const centerVec3 = center.as('EPSG:4978').toVector3();
 
+        // Compute size
+        // TODO: x,y,z might be swapped?
+        const westDeg = THREE.MathUtils.radToDeg(west);
+        const eastDeg = THREE.MathUtils.radToDeg(east);
+        const southDeg = THREE.MathUtils.radToDeg(south);
+        const northDeg = THREE.MathUtils.radToDeg(north);
+        // Project on x, y and z axes ? Or the conversion does that ?
+        const coord1 = new Coordinates('EPSG:4326', westDeg, southDeg, minHeight);
+        const coord2 = new Coordinates('EPSG:4326', eastDeg, southDeg, minHeight);
+        const coord1Vec3 = coord1.as('EPSG:4978').toVector3();
+        const coord2Vec3 = coord2.as('EPSG:4978').toVector3();
+        const sizeX = coord1Vec3.distanceTo(coord2Vec3); // TODO: can be negative?
 
-        var min = new Coordinates('EPSG:4326', THREE.MathUtils.radToDeg(region[0]), THREE.MathUtils.radToDeg(region[1]), region[4]); // south west corner with min height
-        var max = new Coordinates('EPSG:4326', THREE.MathUtils.radToDeg(region[2]), THREE.MathUtils.radToDeg(region[3]), region[5]); // north east corner with max height
-        var minVec3 = min.as('EPSG:4978').toVector3();
-        var maxVec3 = max.as('EPSG:4978').toVector3();
-        // TODO: temps to pass isEmpty test of threejs bounding box. Should be handled another way
-        if (minVec3.x > maxVec3.x) {
-            var x = minVec3.x;
-            minVec3.x = maxVec3.x;
-            maxVec3.x = x;
-        }
-        if (minVec3.y > maxVec3.y) {
-            var y = minVec3.y;
-            minVec3.y = maxVec3.y;
-            maxVec3.y = y;
-        }
-        this.region = new THREE.Box3(minVec3, maxVec3);
+        const coord3 = new Coordinates('EPSG:4326', westDeg, southDeg, minHeight);
+        const coord4 = new Coordinates('EPSG:4326', westDeg, northDeg, minHeight);
+        const coord3Vec3 = coord3.as('EPSG:4978').toVector3();
+        const coord4Vec3 = coord4.as('EPSG:4978').toVector3();
+        const sizeY = coord3Vec3.distanceTo(coord4Vec3); // TODO: can be negative?
+
+        const coord5 = new Coordinates('EPSG:4326', westDeg, southDeg, minHeight);
+        const coord6 = new Coordinates('EPSG:4326', westDeg, southDeg, maxHeight);
+        const coord5Vec3 = coord5.as('EPSG:4978').toVector3();
+        const coord6Vec3 = coord6.as('EPSG:4978').toVector3();
+        const sizeZ = coord5Vec3.distanceTo(coord6Vec3); // TODO: can be negative?
+        var size = new THREE.Vector3(sizeX, sizeY, sizeZ);
+
+        this.region = new THREE.Box3();
+        this.region.setFromCenterAndSize(centerVec3, size);
+
+        // var min = new Coordinates('EPSG:4326', THREE.MathUtils.radToDeg(region[0]), THREE.MathUtils.radToDeg(region[1]), region[4]); // south west corner with min height
+        // var max = new Coordinates('EPSG:4326', THREE.MathUtils.radToDeg(region[2]), THREE.MathUtils.radToDeg(region[3]), region[5]); // north east corner with max height
+        // var minVec3 = min.as('EPSG:4978').toVector3();
+        // var maxVec3 = max.as('EPSG:4978').toVector3();
+        // // TODO: temps to pass isEmpty test of threejs bounding box. Should be handled another way
+        // if (minVec3.x > maxVec3.x) {
+        //     var x = minVec3.x;
+        //     minVec3.x = maxVec3.x;
+        //     maxVec3.x = x;
+        // }
+        // if (minVec3.y > maxVec3.y) {
+        //     var y = minVec3.y;
+        //     minVec3.y = maxVec3.y;
+        //     maxVec3.y = y;
+        // }
+        // this.region = new THREE.Box3(minVec3, maxVec3);
+
         // // TODO optim
         // var min = new Coordinates('EPSG:4326', THREE.MathUtils.radToDeg(region[0]), THREE.MathUtils.radToDeg(region[1]), region[4]); // south west corner with min height
         // var max = new Coordinates('EPSG:4326', THREE.MathUtils.radToDeg(region[2]), THREE.MathUtils.radToDeg(region[3]), region[5]); // north east corner with max height
