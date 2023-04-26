@@ -84,7 +84,7 @@ class C3DTBoundingVolume {
         latitude = THREE.MathUtils.radToDeg(latitude);
         const height = (maxHeight + minHeight) / 2;
 
-        const center = new Coordinates('EPSG:4326', latitude, longitude, height);
+        const center = new Coordinates('EPSG:4326', longitude, latitude, height);
         const centerVec3 = center.as('EPSG:4978').toVector3();
 
         // Compute size
