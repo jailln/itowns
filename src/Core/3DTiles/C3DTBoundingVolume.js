@@ -115,6 +115,7 @@ class C3DTBoundingVolume {
 
         this.region = new THREE.Box3();
         this.region.setFromCenterAndSize(centerVec3, size);
+        this.region.applyMatrix4(inverseTileTransform);
 
         // var min = new Coordinates('EPSG:4326', THREE.MathUtils.radToDeg(region[0]), THREE.MathUtils.radToDeg(region[1]), region[4]); // south west corner with min height
         // var max = new Coordinates('EPSG:4326', THREE.MathUtils.radToDeg(region[2]), THREE.MathUtils.radToDeg(region[3]), region[5]); // north east corner with max height

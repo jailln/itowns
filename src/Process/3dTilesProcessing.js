@@ -43,9 +43,9 @@ const tmpBox3 = new THREE.Box3();
 const tmpSphere = new THREE.Sphere();
 function boundingVolumeToExtent(crs, volume, transform) {
     if (volume.region) {
-        // const box = tmpBox3.copy(volume.region.box3D)
-        //     .applyMatrix4(volume.region.matrixWorld);
-        return Extent.fromBox3(crs, volume.region);
+        const box = tmpBox3.copy(volume.region)
+            .applyMatrix4(transform);
+        return Extent.fromBox3(crs, box);
     } else if (volume.box) {
         const box = tmpBox3.copy(volume.box).applyMatrix4(transform);
         return Extent.fromBox3(crs, box);
@@ -234,7 +234,7 @@ export function computeNodeSSE(camera, node) {
     node.distance = 0;
     if (node.boundingVolume.region) {
         boundingVolumeBox.copy(node.boundingVolume.region);
-        // boundingVolumeBox.applyMatrix4(node.boundingVolume.region.matrixWorld); TODO: should we apply it?
+        boundingVolumeBox.applyMatrix4(node.matrixWorld); // TODO: should we apply it?
         node.distance = boundingVolumeBox.distanceToPoint(camera.camera3D.position);
     } else if (node.boundingVolume.box) {
         // boundingVolume.box is affected by matrixWorld

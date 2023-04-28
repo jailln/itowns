@@ -40,7 +40,7 @@ export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) 
                     bboxMesh.geometry.boundingBox = metadata.boundingVolume.region;
                     helper = new THREE.BoxHelper(bboxMesh);
                     helper.material.linewidth = 2;
-                    regionBoundingBoxParent.add(helper);
+                    // regionBoundingBoxParent.add(helper);
                 // 3dtiles with box
                 } else if (metadata.boundingVolume.box) {
                     bboxMesh.geometry.boundingBox = metadata.boundingVolume.box;
@@ -66,7 +66,7 @@ export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) 
                     helper.updateMatrixWorld();
                 }
 
-                if (helper && !metadata.boundingVolume.region) {
+                if (helper /* && !metadata.boundingVolume.region */) {
                     // compensate B3dm orientation correction
                     const gltfUpAxis = _3dTileslayer.tileset.asset.gltfUpAxis;
                     if (gltfUpAxis === undefined || gltfUpAxis === 'Y') {

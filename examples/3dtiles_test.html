@@ -52,13 +52,12 @@
                         } else if (rootTile.boundingVolume.sphere) {
                             rootTile.boundingVolume.sphere.getBoundingBox(box);
                         } else if (rootTile.boundingVolume.region) {
-                            // region bounding box is stored in local space, apply the bounding region world matrix to it.
                             var boundingRegion = rootTile.boundingVolume.region;
                             box.copy(boundingRegion);
                             // boundingRegion.updateMatrixWorld();
                             // box.applyMatrix4(boundingRegion.matrixWorld);
                         }
-                        if (rootTile.transform && !rootTile.boundingVolume.region) { // bounding regions are not affected by the tile transform matrix (see 3D Tiles spec)
+                        if (rootTile.transform /*&& !rootTile.boundingVolume.region*/) { // bounding regions are not affected by the tile transform matrix (see 3D Tiles spec)
                             var transform = new itowns.THREE.Matrix4();
                             transform.fromArray(rootTile.transform.elements);
                             box.applyMatrix4(transform);
@@ -108,7 +107,7 @@
                 name: 'MEL',
                 // sseThreshold: 0.05,
                 source: new itowns.C3DTilesSource({
-                    // url: 'http://localhost/mel3d/tileset.json',
+                    // url: 'http://localhost/3dtiles/b3dm-mel-3d-subset/tileset.json',
                     url: 'https://data-query-files-http.dev.ciril.lan/Lille/3dtilesv1/tileset.json'
                 }),
             }, view);
