@@ -6,6 +6,10 @@ import OBBHelper from './OBBHelper';
 
 const bboxMesh = new THREE.Mesh();
 
+const matrixChangeUpVectorZtoY = (new THREE.Matrix4()).makeRotationX(Math.PI / 2);
+// For gltf rotation
+const matrixChangeUpVectorZtoX = (new THREE.Matrix4()).makeRotationZ(-Math.PI / 2);
+
 export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) {
     const gui = GeometryDebug.createGeometryDebugUI(datDebugTool, view, _3dTileslayer);
 
@@ -40,7 +44,9 @@ export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) 
                     bboxMesh.geometry.boundingBox = metadata.boundingVolume.region;
                     helper = new THREE.BoxHelper(bboxMesh);
                     helper.material.linewidth = 2;
-                    // regionBoundingBoxParent.add(helper);
+                    const gltfUpAxis = _3dTileslayer.tileset.asset.gltfUpAxis;
+                    // helper.applyMatrix4(node.matrixWorld);
+                    regionBoundingBoxParent.add(helper);
                 // 3dtiles with box
                 } else if (metadata.boundingVolume.box) {
                     bboxMesh.geometry.boundingBox = metadata.boundingVolume.box;
@@ -64,20 +70,23 @@ export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) 
                     }
                     node.userData.obb = helper;
                     helper.updateMatrixWorld();
-                }
 
-                if (helper /* && !metadata.boundingVolume.region */) {
                     // compensate B3dm orientation correction
+                    // TODO: why do we need to compensate ? Should be handled by node matrixworld ? : do it in the node matrix instead of the gltf scene when parsing?
                     const gltfUpAxis = _3dTileslayer.tileset.asset.gltfUpAxis;
                     if (gltfUpAxis === undefined || gltfUpAxis === 'Y') {
                         helper.rotation.x = -Math.PI * 0.5;
                     } else if (gltfUpAxis === 'X') {
                         helper.rotation.z = -Math.PI * 0.5;
                     }
+                    helper.updateMatrix();
+
+                }
+
+                if (helper && !metadata.boundingVolume.region) {
 
                     // Add helper to parent to apply the correct transformation
                     node.parent.add(helper);
-                    helper.updateMatrix();
                     helper.updateMatrixWorld(true);
                 }
             }

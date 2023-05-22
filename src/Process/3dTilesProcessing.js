@@ -81,7 +81,7 @@ function _subdivideNodeAdditive(context, layer, node, cullingTest) {
             node.add(tile);
             tile.updateMatrixWorld();
 
-            // The extent is calculated but it's never used in 3D tiles process
+            // TODO: Remove The extent is calculated but it's never used in 3D tiles process
             const extent = boundingVolumeToExtent(layer.extent.crs, tile.boundingVolume, tile.matrixWorld);
             tile.traverse((obj) => {
                 obj.extent = extent;
@@ -110,6 +110,7 @@ function _subdivideNodeSubstractive(context, layer, node) {
                     childrenTiles[i].loaded = true;
                     node.add(tile);
                     tile.updateMatrixWorld();
+                    // TODO: remove because cannot happen?
                     if (node.additiveRefinement) {
                         context.view.notifyChange(node);
                     }
