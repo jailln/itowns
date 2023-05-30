@@ -67,36 +67,17 @@
             // ---------- DISPLAY VECTOR TILED MAP DATA AS A ColorLayer : ----------
 
             // Define the source of the ColorLayer data : a vector tiled map from the geoportail.
-            const mapSource = new itowns.VectorTilesSource({
-                style: 'https://wxs.ign.fr/essentiels/static/vectorTiles/styles/PLAN.IGN/standard.json',
-                // We don't display mountains and parcels related data to ease visualisation. Also, we don't display
-                // buildings related data as it will be displayed in another Layer.
-                filter: (layer) => {
-                    return !layer['source-layer'].includes('bati_surf')
-                        && !layer['source-layer'].includes('oro_')
-                        && !layer['source-layer'].includes('routier_ponc')
-                        && !layer['source-layer'].includes('parcellaire')
-                }
-            });
-
-            // Create a ColorLayer to support map data.
-            const mapLayer = new itowns.ColorLayer('MVT', {
-                source: mapSource,
-                effect_type: itowns.colorLayerEffects.removeLightColor,
-                effect_parameter: 2.5,
-                addLabelLayer: { performance: true },
-                style: new itowns.Style({
-                    text: {
-                        color: '#000000',
-                        haloColor: '#ffffff',
-                        haloWidth: 3,
-                        haloBlur: 2,
-                    }
-                })
-            });
+            // const mapSource = new itowns.VectorTilesSource({
+            //     style: 'http://localhost/ain_ogr2ogr_style.json',
+            // });
+            //
+            // // Create a ColorLayer to support map data.
+            // const mapLayer = new itowns.ColorLayer('MVT', {
+            //     source: mapSource,
+            // });
 
             // Add the ColorLayer to the scene and to the debug menu.
-            view.addLayer(mapLayer).then(debugMenu.addLayerGUI.bind(debugMenu));
+            // view.addLayer(mapLayer).then(debugMenu.addLayerGUI.bind(debugMenu));
 
 
             // ---------- DISPLAY ORTHO-IMAGES : ----------
@@ -108,26 +89,25 @@
             });
 
             // ---------- DISPLAY VECTOR TILED BUILDING DATA AS 3D MESHES : ----------
-
             // Define the source of the building data : those are vector tiled data from the geoportail.
             const buildingsSource = new itowns.VectorTilesSource({
-                style: 'https://wxs.ign.fr/essentiels/static/vectorTiles/styles/PLAN.IGN/standard.json',
+                style: 'http://localhost/ain_ogr2ogr_style.json',
                 // We only want to display buildings related data.
-                filter: (layer) => {
-                    return layer['source-layer'].includes('bati_surf')
-                        && layer.paint["fill-color"];
-                },
+                // filter: (layer) => {
+                //     return layer['source-layer'].includes('batiment')
+                //         && layer.paint["fill-color"];
+                // },
             });
 
             // Create a FeatureGeometryLayer to support building data.
             var buildingsLayer = new itowns.FeatureGeometryLayer('VTBuilding',{
                 source: buildingsSource,
-                zoom: { min: 15 },
+                zoom: { min: 0, max: 19 },
                 accurate: false,
                 style: new itowns.Style({
                     fill: {
-                        base_altitude: (p) => p.alti_sol || 0,
-                        extrusion_height: (p) => p.hauteur || 0,
+                        // base_altitude: (p) => p.bnb_altitude_sol || 0,
+                        extrusion_height: (p) => p.igntop202103_bat_hauteur || 0,
                     }
                 })
             });
