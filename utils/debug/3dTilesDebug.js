@@ -41,12 +41,16 @@ export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) 
             if (!helper) {
                 // 3dtiles with region
                 if (metadata.boundingVolume.region) {
-                    bboxMesh.geometry.boundingBox = metadata.boundingVolume.region;
+                    var box = new THREE.Box3();
+                    box.copy(metadata.boundingVolume.region);
+                    var inverseTileTransform = new THREE.Matrix4();
+                    inverseTileTransform.copy(node.matrixWorld).invert();
+                    box.applyMatrix4(inverseTileTransform);
+                    box.expandByScalar(5000000);
+                    bboxMesh.geometry.boundingBox = box;
                     helper = new THREE.BoxHelper(bboxMesh);
                     helper.material.linewidth = 2;
-                    const gltfUpAxis = _3dTileslayer.tileset.asset.gltfUpAxis;
-                    // helper.applyMatrix4(node.matrixWorld);
-                    regionBoundingBoxParent.add(helper);
+                    // regionBoundingBoxParent.add(helper);
                 // 3dtiles with box
                 } else if (metadata.boundingVolume.box) {
                     bboxMesh.geometry.boundingBox = metadata.boundingVolume.box;
@@ -83,7 +87,7 @@ export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) 
 
                 }
 
-                if (helper && !metadata.boundingVolume.region) {
+                if (helper /* && !metadata.boundingVolume.region */) {
 
                     // Add helper to parent to apply the correct transformation
                     node.parent.add(helper);

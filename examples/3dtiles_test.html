@@ -121,6 +121,9 @@
             var d = new debug.Debug(view, menuGlobe.gui);
             debug.createTileDebugUI(menuGlobe.gui, view, view.tileLayer, d);
             debug.create3dTilesDebugUI(menuGlobe.gui, view, threedtilesmel, d);
+
+            const axesHelper = new itowns.THREE.AxesHelper( 5000000000 );
+            view.scene.add(axesHelper);
         </script>
     </body>
 </html>
