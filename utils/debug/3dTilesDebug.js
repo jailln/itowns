@@ -53,6 +53,10 @@ export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) 
                     // regionBoundingBoxParent.add(helper);
                 // 3dtiles with box
                 } else if (metadata.boundingVolume.box) {
+                    // var boxbox = new THREE.Box3();
+                    // boxbox.copy(metadata.boundingVolume.box);
+                    // boxbox.expandByScalar(5000000);
+                    metadata.boundingVolume.box.expandByScalar(50000);
                     bboxMesh.geometry.boundingBox = metadata.boundingVolume.box;
                     helper = new THREE.BoxHelper(bboxMesh);
                     helper.material.linewidth = 2;
