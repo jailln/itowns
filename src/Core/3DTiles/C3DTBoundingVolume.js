@@ -49,6 +49,139 @@ class C3DTBoundingVolume {
     }
 
     initBoundingRegion(region, inverseTileTransform) {
+        const standOutPoints = [];
+
+        // TODO optim
+        // Compute center
+        let east = region[2];
+        const west = region[0];
+        const south = region[1];
+        const north = region[3];
+        const minHeight = region[4];
+        const maxHeight = region[5];
+
+        if (east < west) {
+            east += 2 * Math.PI;
+        }
+
+        let longitude = (west + east) * 0.5;
+        if (longitude < -Math.PI || longitude > Math.PI) {
+            longitude += Math.PI;
+            if (longitude < 0 || longitude > 2 * Math.PI) {
+                const mod = longitude % (2 * Math.PI);
+                if (
+                    Math.abs(mod) < 0.00000000000001 &&
+                    Math.abs(longitude) > 0.00000000000001
+                ) {
+                    longitude = Math.PI * 2;
+                } else {
+                    longitude = mod;
+                }
+            }
+        }
+        let latitude = (south + north) * 0.5;
+
+        longitude = THREE.MathUtils.radToDeg(longitude);
+        latitude = THREE.MathUtils.radToDeg(latitude);
+        const height = (maxHeight + minHeight) / 2;
+
+        const center = new Coordinates('EPSG:4326', longitude, latitude, height);
+        const centerVec3 = center.as('EPSG:4978').toVector3();
+
+        // Compute size
+        // TODO: x,y,z might be swapped?
+        const westDeg = THREE.MathUtils.radToDeg(west);
+        const eastDeg = THREE.MathUtils.radToDeg(east);
+        const southDeg = THREE.MathUtils.radToDeg(south);
+        const northDeg = THREE.MathUtils.radToDeg(north);
+
+        const coord1 = new Coordinates('EPSG:4326', westDeg, southDeg, minHeight);
+        const coord2 = new Coordinates('EPSG:4326', eastDeg, southDeg, minHeight);
+        const coord1Vec3 = coord1.as('EPSG:4978').toVector3();
+        const coord2Vec3 = coord2.as('EPSG:4978').toVector3();
+        standOutPoints.push(coord1Vec3);
+        standOutPoints.push(coord2Vec3);
+        const sizeX = coord1Vec3.distanceTo(coord2Vec3); // TODO: can be negative?
+        const centerPoint1 = new THREE.Vector3();
+        centerPoint1.lerp(coord1Vec3, coord2Vec3, 0.5);
+
+        const coord3 = new Coordinates('EPSG:4326', westDeg, southDeg, minHeight);
+        const coord4 = new Coordinates('EPSG:4326', westDeg, northDeg, minHeight);
+        const coord3Vec3 = coord3.as('EPSG:4978').toVector3();
+        const coord4Vec3 = coord4.as('EPSG:4978').toVector3();
+        standOutPoints.push(coord4Vec3);
+        const sizeY = coord3Vec3.distanceTo(coord4Vec3); // TODO: can be negative?
+
+        const coord5 = new Coordinates('EPSG:4326', westDeg, southDeg, minHeight);
+        const coord6 = new Coordinates('EPSG:4326', westDeg, southDeg, maxHeight);
+        const coord5Vec3 = coord5.as('EPSG:4978').toVector3();
+        const coord6Vec3 = coord6.as('EPSG:4978').toVector3();
+        standOutPoints.push(coord5Vec3);
+        standOutPoints.push(coord6Vec3);
+        const sizeZ = coord5Vec3.distanceTo(coord6Vec3); // TODO: can be negative?
+
+        const coord7 = new Coordinates('EPSG:4326', westDeg, southDeg, maxHeight);
+        const coord8 = new Coordinates('EPSG:4326', eastDeg, southDeg, maxHeight);
+        const coord7Vec3 = coord7.as('EPSG:4978').toVector3();
+        const coord8Vec3 = coord8.as('EPSG:4978').toVector3();
+        standOutPoints.push(coord8Vec3);
+        const centerPoint2 = new THREE.Vector3();
+        centerPoint2.lerp(coord7Vec3, coord8Vec3, 0.5);
+
+        const size = new THREE.Vector3(sizeX, sizeY, sizeZ);
+
+        const centerNormalDir = new THREE.Vector3();
+        centerNormalDir.subVectors(centerPoint2, centerPoint1).normalize();
+        const scaledCenterDir = new THREE.Vector3();
+        scaledCenterDir.copy(centerNormalDir);
+        scaledCenterDir.multiplyScalar(sizeZ / 2);
+        const standOutPoint = new THREE.Vector3();
+        standOutPoint.multiplyVectors(centerVec3, scaledCenterDir);
+        standOutPoints.push(standOutPoint);
+
+        const coord9 = new Coordinates('EPSG:4326', westDeg, northDeg, maxHeight);
+        const coord10 = new Coordinates('EPSG:4326', eastDeg, northDeg, maxHeight);
+        const coord9Vec3 = coord9.as('EPSG:4978').toVector3();
+        const coord10Vec3 = coord10.as('EPSG:4978').toVector3();
+        standOutPoints.push(coord9Vec3);
+        standOutPoints.push(coord10Vec3);
+
+        // Find out min and max from standoutpoints
+        let minX = standOutPoints[0].x;
+        let minY = standOutPoints[0].y;
+        let minZ = standOutPoints[0].z;
+
+        let maxX = standOutPoints[0].x;
+        let maxY = standOutPoints[0].y;
+        let maxZ = standOutPoints[0].z;
+        for (let i = 1; i < standOutPoints.length; i++) {
+            // min
+            if (standOutPoints[i].x < minX && standOutPoints[i].y < minY && standOutPoints[i].z < minZ) {
+                minX = standOutPoints[i].x;
+                minY = standOutPoints[i].y;
+                minZ = standOutPoints[i].z;
+                console.log('yes');
+            }
+
+            // max
+            if (standOutPoints[i].x > maxX && standOutPoints[i].y > maxY && standOutPoints[i].z > maxZ) {
+                minX = standOutPoints[i].x;
+                minY = standOutPoints[i].y;
+                minZ = standOutPoints[i].z;
+                console.log('yes');
+            }
+        }
+
+        this.region = new OBB(new THREE.Vector3(minX, minY, minZ), new THREE.Vector3(maxX, maxY, maxZ));
+
+        // this.region = new THREE.Box3();
+        // this.region.setFromCenterAndSize(centerVec3, size);
+        // this.region.applyMatrix4(inverseTileTransform);
+    }
+
+    // From center and size as a BOX3
+    /*
+    initBoundingRegion(region, inverseTileTransform) {
         // TODO optim
         // Try to initialize Box3  from center and size
         // Compute center
@@ -111,7 +244,7 @@ class C3DTBoundingVolume {
         const coord5Vec3 = coord5.as('EPSG:4978').toVector3();
         const coord6Vec3 = coord6.as('EPSG:4978').toVector3();
         const sizeZ = coord5Vec3.distanceTo(coord6Vec3); // TODO: can be negative?
-        var size = new THREE.Vector3(sizeX, sizeY, sizeZ);
+        const size = new THREE.Vector3(sizeX, sizeY, sizeZ);
 
         this.region = new THREE.Box3();
         this.region.setFromCenterAndSize(centerVec3, size);
@@ -152,6 +285,7 @@ class C3DTBoundingVolume {
         // }
         // this.region = new THREE.Box3(minVec3, maxVec3);
     }
+     */
 
     initBoundingBox(box) {
         // box[0], box[1], box[2] = center of the box
