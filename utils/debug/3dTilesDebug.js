@@ -3,7 +3,6 @@ import View from 'Core/View';
 import GeometryLayer from 'Layer/GeometryLayer';
 import { OBB } from 'ThreeExtended/math/OBB';
 import GeometryDebug from './GeometryDebug';
-import OBBHelper from './OBBHelper';
 import RealOBBHelper from './RealOBBHelper';
 
 const bboxMesh = new THREE.Mesh();

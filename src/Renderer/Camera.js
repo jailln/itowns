@@ -25,6 +25,14 @@ const ndcBox3 = new THREE.Box3(
     new THREE.Vector3(1, 1, 1),
 );
 
+const obbXaxis = new THREE.Vector3();
+const obbYaxis = new THREE.Vector3();
+const obbZaxis = new THREE.Vector3();
+const obbMin = new THREE.Vector3();
+const obbMax = new THREE.Vector3();
+const pVertex = new THREE.Vector3();
+const nVertex = new THREE.Vector3();
+
 function updatePreSse(camera, height, fov) {
     // sse = projected geometric error on screen plane from distance
     // We're using an approximation, assuming that the geometric error of all
@@ -205,11 +213,7 @@ class Camera {
         return this.box3SizeOnScreen(box3, matrixWorld).intersectsBox(ndcBox3);
     }
 
-    isOBBVisible(obb, matrixWorld) {
-        return true;
-    }
-
-    isSphereVisible(sphere, matrixWorld) {
+    prepareFrustum(matrixWorld) {
         if (this.#_viewMatrixNeedsUpdate) {
             // update visibility testing matrix
             this.#_viewMatrix.multiplyMatrices(this.camera3D.projectionMatrix, this.camera3D.matrixWorldInverse);
@@ -221,6 +225,54 @@ class Camera {
         } else {
             tmp.frustum.setFromProjectionMatrix(this.#_viewMatrix);
         }
+    }
+
+    isOBBVisible(obb, matrixWorld) {
+        this.prepareFrustum(matrixWorld); // TODO: apply matriworldinverse ? or don't apply matrix world
+
+        const planes = tmp.frustum.planes;
+
+        obb.rotation.extractBasis(obbXaxis, obbYaxis, obbZaxis);
+
+        for (let i = 0; i < planes.length; i++) {
+            // Compute n-p vertices
+            const planeNormal = planes[i].normal;
+            const planeNormalBoxSpace = new THREE.Vector3(
+                obbXaxis.dot(planeNormal),
+                obbYaxis.dot(planeNormal),
+                obbZaxis.dot(planeNormal));
+
+            obbMin.subVectors(obb.center, obb.halfSize);
+            obbMax.addVectors(obb.center, obb.halfSize);
+            // TODO: regroup if tests
+            pVertex.copy(obbMin);
+            nVertex.copy(obbMax);
+            if (planeNormalBoxSpace.x >= 0) {
+                pVertex.x = obbMax.x;
+                nVertex.x = obbMin.x;
+            }
+            if (planeNormalBoxSpace.y >= 0) {
+                pVertex.y = obbMax.y;
+                nVertex.y = obbMin.y;
+            }
+            if (planeNormalBoxSpace.z >= 0) {
+                pVertex.z = obbMax.z;
+                nVertex.z = obbMin.z;
+            }
+
+            // perform culling
+            // is the positive vertex outside?
+            if (planes[i].distanceToPoint(pVertex) < 0) {
+                return false; // Box is outside of frustum
+            } else if (planes[i].distanceToPoint(nVertex) < 0) {
+                return true; // box intersects frustum
+            }
+        }
+        return true; // box is inside frustum
+    }
+
+    isSphereVisible(sphere, matrixWorld) {
+        this.prepareFrustum(matrixWorld);
         return tmp.frustum.intersectsSphere(sphere);
     }
 
