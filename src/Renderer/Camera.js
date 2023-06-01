@@ -267,13 +267,6 @@ class Camera {
             } else if (planes[i].distanceToPoint(nVertex) < 0) {
                 return true; // box intersects frustum
             }
-
-            // culling from paper
-            // if (planes[i].distanceToPoint(nVertex) > 0) {
-            //     return false; // Box is outside of frustum
-            // } else if (planes[i].distanceToPoint(pVertex) > 0) {
-            //     return true; // box intersects frustum
-            // }
         }
         return true; // box is inside frustum
     }

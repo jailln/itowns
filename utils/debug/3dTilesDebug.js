@@ -47,9 +47,9 @@ export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) 
                     obb.copy(metadata.boundingVolume.region);
                     const inverseTileTransform = new THREE.Matrix4();
                     inverseTileTransform.copy(node.matrixWorld).invert();
-                    obb.applyMatrix4(inverseTileTransform);
+                    // obb.applyMatrix4(inverseTileTransform);
                     helper = new RealOBBHelper(obb);
-                    // regionBoundingBoxParent.add(helper);
+                    regionBoundingBoxParent.add(helper);
                     helper.updateMatrixWorld();
                 // 3dtiles with box
                 } else if (metadata.boundingVolume.box) {
@@ -68,34 +68,34 @@ export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) 
                     helper.position.copy(metadata.boundingVolume.sphere.center);
                 }
 
-                if (helper) {
-                    helper.layer = layer;
-                    // add the ability to hide all the debug obj for one layer at once
-                    const l3js = layer.threejsLayer;
-                    helper.layers.set(l3js);
-                    if (helper.children.length) {
-                        helper.children[0].layers.set(l3js);
-                    }
+                // if (helper) {
+                //     helper.layer = layer;
+                //     // add the ability to hide all the debug obj for one layer at once
+                //     const l3js = layer.threejsLayer;
+                //     helper.layers.set(l3js);
+                //     if (helper.children.length) {
+                //         helper.children[0].layers.set(l3js);
+                //     }
                     node.userData.obb = helper;
-                    // helper.updateMatrixWorld();
+                //     helper.updateMatrixWorld();
+                //
+                //     // compensate B3dm orientation correction
+                //     // TODO: why do we need to compensate ? Should be handled by node matrixworld ? : do it in the node matrix instead of the gltf scene when parsing?
+                //     const gltfUpAxis = _3dTileslayer.tileset.asset.gltfUpAxis;
+                //     if (gltfUpAxis === undefined || gltfUpAxis === 'Y') {
+                //         helper.rotation.x = -Math.PI * 0.5;
+                //     } else if (gltfUpAxis === 'X') {
+                //         helper.rotation.z = -Math.PI * 0.5;
+                //     }
+                //     helper.updateMatrix();
+                //
+                // }
 
-                    // compensate B3dm orientation correction
-                    // TODO: why do we need to compensate ? Should be handled by node matrixworld ? : do it in the node matrix instead of the gltf scene when parsing?
-                    // const gltfUpAxis = _3dTileslayer.tileset.asset.gltfUpAxis;
-                    // if (gltfUpAxis === undefined || gltfUpAxis === 'Y') {
-                    //     helper.rotateX(-Math.PI * 0.5);
-                    // } else if (gltfUpAxis === 'X') {
-                    //     helper.rotation.z = -Math.PI * 0.5;
-                    // }
-                    // helper.updateMatrix();
-                    node.parent.add(helper);
-
-                }
-
-                if (helper /* && !metadata.boundingVolume.region */) {
+                if (helper && !metadata.boundingVolume.region) {
 
                     // Add helper to parent to apply the correct transformation
-                    // helper.updateMatrixWorld(true);
+                    node.parent.add(helper);
+                    helper.updateMatrixWorld(true);
                 }
             }
 
@@ -130,9 +130,4 @@ export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) 
     gui.add(_3dTileslayer, 'sseThreshold', 0, 100).name('sseThreshold').onChange(() => {
         view.notifyChange(view.camera.camera3D);
     });
-
-    gui.add({ frozen: _3dTileslayer.frozen }, 'frozen').onChange(((value) => {
-        _3dTileslayer.frozen = value;
-        view.notifyChange(_3dTileslayer);
-    }));
 }
