@@ -130,4 +130,9 @@ export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) 
     gui.add(_3dTileslayer, 'sseThreshold', 0, 100).name('sseThreshold').onChange(() => {
         view.notifyChange(view.camera.camera3D);
     });
+
+    gui.add({ frozen: _3dTileslayer.frozen }, 'frozen').onChange(((value) => {
+        _3dTileslayer.frozen = value;
+        view.notifyChange(_3dTileslayer);
+    }));
 }

@@ -56,7 +56,7 @@ class C3DTBoundingVolume {
         const west = region[0];
         const south = region[1];
         const north = region[3];
-        const minHeight = region[4];
+        const minHeight = 0;
         const maxHeight = region[5];
 
         if (east < west) {
@@ -98,19 +98,19 @@ class C3DTBoundingVolume {
         const coord2 = new Coordinates('EPSG:4326', eastDeg, southDeg, minHeight);
         const coord1Vec3 = coord1.as('EPSG:4978').toVector3();
         const coord2Vec3 = coord2.as('EPSG:4978').toVector3();
-        const sizeX = coord1Vec3.distanceTo(coord2Vec3); // TODO: can be negative?
+        const sizeY = coord1Vec3.distanceTo(coord2Vec3); // TODO: can be negative?
 
         const coord3 = new Coordinates('EPSG:4326', westDeg, southDeg, minHeight);
         const coord4 = new Coordinates('EPSG:4326', westDeg, northDeg, minHeight);
         const coord3Vec3 = coord3.as('EPSG:4978').toVector3();
         const coord4Vec3 = coord4.as('EPSG:4978').toVector3();
-        const sizeY = coord3Vec3.distanceTo(coord4Vec3); // TODO: can be negative?
+        const sizeZ = coord3Vec3.distanceTo(coord4Vec3); // TODO: can be negative?
 
         const coord5 = new Coordinates('EPSG:4326', westDeg, southDeg, minHeight);
         const coord6 = new Coordinates('EPSG:4326', westDeg, southDeg, maxHeight);
         const coord5Vec3 = coord5.as('EPSG:4978').toVector3();
         const coord6Vec3 = coord6.as('EPSG:4978').toVector3();
-        const sizeZ = coord5Vec3.distanceTo(coord6Vec3); // TODO: can be negative?
+        const sizeX = coord5Vec3.distanceTo(coord6Vec3); // TODO: can be negative?
         const halfSize = new THREE.Vector3(sizeX / 2, sizeY / 2, sizeZ / 2);
 
         // Compute rotation
