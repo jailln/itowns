@@ -113,9 +113,9 @@
             }, view);
             itowns.View.prototype.addLayer.call(view, threedtilesmel);
 
-            threedtilesmel.whenReady.then(function (layer) {
-                update3DTilesHeight(layer, 50, view);
-            });
+            // threedtilesmel.whenReady.then(function (layer) {
+            //     update3DTilesHeight(layer, 50, view);
+            // });
 
             // Add the UI Debug
             var d = new debug.Debug(view, menuGlobe.gui);

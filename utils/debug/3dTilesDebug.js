@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import View from 'Core/View';
 import GeometryLayer from 'Layer/GeometryLayer';
+import { OBB } from 'ThreeExtended/math/OBB';
 import GeometryDebug from './GeometryDebug';
 import OBBHelper from './OBBHelper';
+import RealOBBHelper from './RealOBBHelper';
 
 const bboxMesh = new THREE.Mesh();
 
@@ -14,6 +16,7 @@ export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) 
     const gui = GeometryDebug.createGeometryDebugUI(datDebugTool, view, _3dTileslayer);
 
     const regionBoundingBoxParent = new THREE.Group();
+    regionBoundingBoxParent.name = 'bboxparent';
     view.scene.add(regionBoundingBoxParent);
 
     // add wireframe
@@ -41,22 +44,20 @@ export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) 
             if (!helper) {
                 // 3dtiles with region
                 if (metadata.boundingVolume.region) {
-                    var box = new THREE.Box3();
-                    box.copy(metadata.boundingVolume.region);
-                    var inverseTileTransform = new THREE.Matrix4();
+                    const obb = new OBB();
+                    obb.copy(metadata.boundingVolume.region);
+                    const inverseTileTransform = new THREE.Matrix4();
                     inverseTileTransform.copy(node.matrixWorld).invert();
-                    box.applyMatrix4(inverseTileTransform);
-                    box.expandByScalar(5000000);
-                    bboxMesh.geometry.boundingBox = box;
-                    helper = new THREE.BoxHelper(bboxMesh);
-                    helper.material.linewidth = 2;
-                    // regionBoundingBoxParent.add(helper);
+                    // obb.applyMatrix4(inverseTileTransform);
+                    helper = new RealOBBHelper(obb);
+                    regionBoundingBoxParent.add(helper);
+                    helper.updateMatrixWorld();
                 // 3dtiles with box
                 } else if (metadata.boundingVolume.box) {
                     // var boxbox = new THREE.Box3();
                     // boxbox.copy(metadata.boundingVolume.box);
                     // boxbox.expandByScalar(5000000);
-                    metadata.boundingVolume.box.expandByScalar(50000);
+                    // metadata.boundingVolume.box.expandByScalar(50000);
                     bboxMesh.geometry.boundingBox = metadata.boundingVolume.box;
                     helper = new THREE.BoxHelper(bboxMesh);
                     helper.material.linewidth = 2;
@@ -68,30 +69,30 @@ export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) 
                     helper.position.copy(metadata.boundingVolume.sphere.center);
                 }
 
-                if (helper) {
-                    helper.layer = layer;
-                    // add the ability to hide all the debug obj for one layer at once
-                    const l3js = layer.threejsLayer;
-                    helper.layers.set(l3js);
-                    if (helper.children.length) {
-                        helper.children[0].layers.set(l3js);
-                    }
+                // if (helper) {
+                //     helper.layer = layer;
+                //     // add the ability to hide all the debug obj for one layer at once
+                //     const l3js = layer.threejsLayer;
+                //     helper.layers.set(l3js);
+                //     if (helper.children.length) {
+                //         helper.children[0].layers.set(l3js);
+                //     }
                     node.userData.obb = helper;
-                    helper.updateMatrixWorld();
+                //     helper.updateMatrixWorld();
+                //
+                //     // compensate B3dm orientation correction
+                //     // TODO: why do we need to compensate ? Should be handled by node matrixworld ? : do it in the node matrix instead of the gltf scene when parsing?
+                //     const gltfUpAxis = _3dTileslayer.tileset.asset.gltfUpAxis;
+                //     if (gltfUpAxis === undefined || gltfUpAxis === 'Y') {
+                //         helper.rotation.x = -Math.PI * 0.5;
+                //     } else if (gltfUpAxis === 'X') {
+                //         helper.rotation.z = -Math.PI * 0.5;
+                //     }
+                //     helper.updateMatrix();
+                //
+                // }
 
-                    // compensate B3dm orientation correction
-                    // TODO: why do we need to compensate ? Should be handled by node matrixworld ? : do it in the node matrix instead of the gltf scene when parsing?
-                    const gltfUpAxis = _3dTileslayer.tileset.asset.gltfUpAxis;
-                    if (gltfUpAxis === undefined || gltfUpAxis === 'Y') {
-                        helper.rotation.x = -Math.PI * 0.5;
-                    } else if (gltfUpAxis === 'X') {
-                        helper.rotation.z = -Math.PI * 0.5;
-                    }
-                    helper.updateMatrix();
-
-                }
-
-                if (helper /* && !metadata.boundingVolume.region */) {
+                if (helper && !metadata.boundingVolume.region) {
 
                     // Add helper to parent to apply the correct transformation
                     node.parent.add(helper);

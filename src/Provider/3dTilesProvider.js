@@ -62,9 +62,6 @@ export function configureTile(tile, layer, metadata, parent) {
     }
     tile.viewerRequestVolume = metadata.viewerRequestVolume;
     tile.boundingVolume = metadata.boundingVolume;
-    // if (tile.boundingVolume.region) {
-    //     tile.add(tile.boundingVolume.region); // TODO: Was is das?
-    // }
     tile.updateMatrixWorld();
 }
 

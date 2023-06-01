@@ -205,6 +205,10 @@ class Camera {
         return this.box3SizeOnScreen(box3, matrixWorld).intersectsBox(ndcBox3);
     }
 
+    isOBBVisible(obb, matrixWorld) {
+        return true;
+    }
+
     isSphereVisible(sphere, matrixWorld) {
         if (this.#_viewMatrixNeedsUpdate) {
             // update visibility testing matrix

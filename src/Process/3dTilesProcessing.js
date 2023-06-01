@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import Extent from 'Core/Geographic/Extent';
+import { OBB } from 'ThreeExtended/math/OBB';
 import ObjectRemovalHelper from 'Process/ObjectRemovalHelper';
 import { C3DTILES_LAYER_EVENTS } from '../Layer/C3DTilesLayer';
 
@@ -39,23 +39,6 @@ function subdivideNode(context, layer, node, cullingTest) {
     }
 }
 
-const tmpBox3 = new THREE.Box3();
-const tmpSphere = new THREE.Sphere();
-function boundingVolumeToExtent(crs, volume, transform) {
-    if (volume.region) {
-        const box = tmpBox3.copy(volume.region)
-            .applyMatrix4(transform);
-        return Extent.fromBox3(crs, box);
-    } else if (volume.box) {
-        const box = tmpBox3.copy(volume.box).applyMatrix4(transform);
-        return Extent.fromBox3(crs, box);
-    } else {
-        const sphere = tmpSphere.copy(volume.sphere).applyMatrix4(transform);
-        const box = sphere.getBoundingBox(tmpBox3);
-        return Extent.fromBox3(crs, box);
-    }
-}
-
 const tmpMatrix = new THREE.Matrix4();
 function _subdivideNodeAdditive(context, layer, node, cullingTest) {
     for (const child of layer.tileset.tiles[node.tileId].children) {
@@ -80,12 +63,6 @@ function _subdivideNodeAdditive(context, layer, node, cullingTest) {
         child.promise = requestNewTile(context.view, context.scheduler, layer, child, node, true).then((tile) => {
             node.add(tile);
             tile.updateMatrixWorld();
-
-            // TODO: Remove The extent is calculated but it's never used in 3D tiles process
-            const extent = boundingVolumeToExtent(layer.extent.crs, tile.boundingVolume, tile.matrixWorld);
-            tile.traverse((obj) => {
-                obj.extent = extent;
-            });
             layer.onTileContentLoaded(tile);
 
             context.view.notifyChange(child);
@@ -230,13 +207,16 @@ export function pre3dTilesUpdate() {
 }
 
 const boundingVolumeBox = new THREE.Box3();
+const boundingVolumeOBB = new OBB();
+const tmpOBBVector = new THREE.Vector3();
 const boundingVolumeSphere = new THREE.Sphere();
 export function computeNodeSSE(camera, node) {
     node.distance = 0;
     if (node.boundingVolume.region) {
-        boundingVolumeBox.copy(node.boundingVolume.region);
-        boundingVolumeBox.applyMatrix4(node.matrixWorld); // TODO: should we apply it?
-        node.distance = boundingVolumeBox.distanceToPoint(camera.camera3D.position);
+        boundingVolumeOBB.copy(node.boundingVolume.region);
+        boundingVolumeOBB.applyMatrix4(node.matrixWorld); // TODO: should we apply it?
+        // TODO: until it is implemented directly in threejs
+        node.distance = boundingVolumeOBB.clampPoint(camera.camera3D.position, tmpOBBVector).distanceTo(camera.camera3D.position);
     } else if (node.boundingVolume.box) {
         // boundingVolume.box is affected by matrixWorld
         boundingVolumeBox.copy(node.boundingVolume.box);
@@ -266,9 +246,6 @@ export function init3dTilesLayer(view, scheduler, layer, rootTile) {
             tile.updateMatrixWorld();
             layer.tileset.tiles[tile.tileId].loaded = true;
             layer.root = tile;
-            // The extent is calculated but it's never used in 3D tiles process
-            layer.extent = boundingVolumeToExtent(layer.crs || view.referenceCrs,
-                tile.boundingVolume, tile.matrixWorld);
             layer.onTileContentLoaded(tile);
         });
 }
