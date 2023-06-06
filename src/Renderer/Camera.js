@@ -227,6 +227,9 @@ class Camera {
         }
     }
 
+    // Implemented from https://www.cse.chalmers.se/~uffe/vfc_bbox.pdf and
+    // http://www.lighthouse3d.com/tutorials/view-frustum-culling/geometric-approach-testing-boxes/
+    // http://www.lighthouse3d.com/tutorials/view-frustum-culling/geometric-approach-testing-boxes-ii/
     isOBBVisible(obb, matrixWorld) {
         this.prepareFrustum(matrixWorld); // TODO: apply matriworldinverse ? or don't apply matrix world
 
@@ -270,7 +273,7 @@ class Camera {
         }
         return true; // box is inside frustum
     }
-
+    
     isSphereVisible(sphere, matrixWorld) {
         this.prepareFrustum(matrixWorld);
         return tmp.frustum.intersectsSphere(sphere);

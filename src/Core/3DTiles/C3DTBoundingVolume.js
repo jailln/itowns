@@ -1,12 +1,9 @@
 import * as THREE from 'three';
 import { OBB } from 'ThreeExtended/math/OBB';
-import Extent from '../Geographic/Extent';
 import Coordinates from '../Geographic/Coordinates';
 import C3DTilesTypes from './C3DTilesTypes';
 
-const matrix = new THREE.Matrix4();
 const size = new THREE.Vector3();
-const extent = new Extent('EPSG:4326', 0, 0, 0, 0);
 const boxCenter = new THREE.Vector3();
 const sphereCenter = new THREE.Vector3();
 const worldCoordinateCenter = new THREE.Vector3();
@@ -14,7 +11,6 @@ const worldCoordinateCenter = new THREE.Vector3();
 const epsilon = 0.00000000000001;
 const regionCenterCarto = new Coordinates('EPSG:4326');
 const regionCenterCartesian = new Coordinates('EPSG:4978');
-const regioncenterVec3 = new THREE.Vector3();
 function computeRegionCenter(east, west, south, north, minHeight, maxHeight) {
     if (east < west) {
         east += 2 * Math.PI;
@@ -43,8 +39,7 @@ function computeRegionCenter(east, west, south, north, minHeight, maxHeight) {
 
     regionCenterCarto.setFromValues(longitude, latitude, height);
     regionCenterCarto.as('EPSG:4978', regionCenterCartesian);
-    regionCenterCartesian.toVector3(regioncenterVec3);
-    return regioncenterVec3;
+    return regionCenterCartesian.toVector3();
 }
 
 const southWestBottomCarto = new Coordinates('EPSG:4326');
@@ -91,7 +86,7 @@ function computeRegionHalfSize(east, west, south, north, minHeight, maxHeight) {
 
 // center = bounding box / region center in EPSG:4326
 function computeRegionRotation(center) {
-    const euler = new THREE.Euler(0, THREE.MathUtils.degToRad(-center.latitude), THREE.MathUtils.degToRad(center.longitude));
+    const euler = new THREE.Euler(0, THREE.MathUtils.degToRad(-regionCenterCarto.latitude), THREE.MathUtils.degToRad(regionCenterCarto.longitude));
     const mat4Rot = new THREE.Matrix4();
     mat4Rot.makeRotationFromEuler(euler);
     const mat3Rot = new THREE.Matrix3();
@@ -141,12 +136,12 @@ class C3DTBoundingVolume {
         const west = region[0];
         const south = region[1];
         const north = region[3];
-        const minHeight = 0;
+        const minHeight = region[4];
         const maxHeight = region[5];
 
         const c = computeRegionCenter(east, west, south, north, minHeight, maxHeight);
         const s = computeRegionHalfSize(east, west, south, north, minHeight, maxHeight);
-        const r = computeRegionRotation(regionCenterCarto); // TODO: pas top de passer regionCenterCarto
+        const r = computeRegionRotation(c);
 
         this.region = new OBB(c, s, r);
         this.region.applyMatrix4(inverseTileTransform);
