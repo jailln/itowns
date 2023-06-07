@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Itowns - 3d-tiles example</title>
+
+        <meta charset="UTF-8">
+        <link rel="stylesheet" type="text/css" href="css/example.css">
+        <link rel="stylesheet" type="text/css" href="css/LoadingScreen.css">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.6/dat.gui.min.js"></script>
+    </head>
+    <body>
+        <div id="viewerDiv"></div>
+        <div id="description">
+            <p><b>Feature Information:</b></p>
+            <div id="featureInfo"></div>
+        </div>
+        <script src="js/GUI/GuiTools.js"></script>
+        <script src="../dist/itowns.js"></script>
+        <script src="js/GUI/LoadingScreen.js"></script>
+        <script src="../dist/debug.js"></script>
+        <script src="js/3dTilesHelper.js"></script>
+        <script type="text/javascript">
+            /* global itowns,document,GuiTools*/
+            var placement = {
+                coord: new itowns.Coordinates('EPSG:4326', 3.0719480914778394, 50.6292, 0),
+                range: 4000,
+                tilt: 45,
+            }
+            // iTowns namespace defined here
+            var viewerDiv = document.getElementById('viewerDiv');
+
+            var view = new itowns.GlobeView(viewerDiv, placement);
+            setupLoadingScreen(viewerDiv, view);
+
+            var menuGlobe = new GuiTools('menuDiv', view, 300);
+
+            itowns.Fetcher.json('./layers/JSONLayers/OPENSM.json').then(function _(config) {
+                config.source = new itowns.TMSSource(config.source);
+                var layer = new itowns.ColorLayer('Ortho', config);
+                view.addLayer(layer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            });
+
+            function computeBoundingBox(nativeLayer) {
+                var box = new itowns.THREE.Box3();
+                if (nativeLayer.isC3DTilesLayer) {
+                    var rootTile = nativeLayer.tileset.tiles[0];
+                    if (rootTile && rootTile.boundingVolume) {
+                        // 3D Tiles tiles can have itowns.THREE different types of bounding volumes (box, sphere and region)
+                        if (rootTile.boundingVolume.box) {
+                            box.copy(rootTile.boundingVolume.box)
+                        } else if (rootTile.boundingVolume.sphere) {
+                            rootTile.boundingVolume.sphere.getBoundingBox(box);
+                        } else if (rootTile.boundingVolume.region) {
+                            var boundingRegion = rootTile.boundingVolume.region;
+                            box.copy(boundingRegion);
+                            // boundingRegion.updateMatrixWorld();
+                            // box.applyMatrix4(boundingRegion.matrixWorld);
+                        }
+                        if (rootTile.transform /*&& !rootTile.boundingVolume.region*/) { // bounding regions are not affected by the tile transform matrix (see 3D Tiles spec)
+                            var transform = new itowns.THREE.Matrix4();
+                            transform.fromArray(rootTile.transform.elements);
+                            box.applyMatrix4(transform);
+                        }
+                    } else {
+                        box.setFromObject(nativeLayer.object3d);
+                    }
+                } else {
+                    box.setFromObject(nativeLayer);
+                }
+                return box;
+            }
+
+            // Update height
+            function update3DTilesHeight(nativeLayer, heightTranslation, view) {
+                if (!view || !nativeLayer || !nativeLayer.isC3DTilesLayer) {
+                    $log.error('[Object 3D Utils] Need a 3D Tiles layer and a view to apply a translation');
+                    return;
+                }
+                if (heightTranslation === undefined || heightTranslation === null || isNaN(heightTranslation)) {
+                    return;
+                }
+
+                // Until all itowns layers have a bounding box, compute it manually
+                var boundingBox = computeBoundingBox(nativeLayer);
+                var center = new itowns.THREE.Vector3();
+                boundingBox.getCenter(center);
+
+                // Use view.referenceCrs until 3D Tiles layers have a crs attribute in itowns
+                var centerCoord = new itowns.Coordinates(view.referenceCrs, center);
+                var centerCarto = centerCoord.as('EPSG:4326');
+
+                var offsetCarto = new itowns.Coordinates('EPSG:4326', centerCarto.x, centerCarto.y, centerCarto.z + heightTranslation);
+                var offset = offsetCarto.as(view.referenceCrs).toVector3();
+
+                var translation = new itowns.THREE.Vector3();
+                translation.subVectors(offset, center);
+
+                nativeLayer.object3d.translateX(translation.x);
+                nativeLayer.object3d.translateY(translation.y);
+                nativeLayer.object3d.translateZ(translation.z);
+                nativeLayer.object3d.updateMatrixWorld();
+            };
+
+            // 3D Tiles
+            var threedtilesmel = new itowns.C3DTilesLayer('3d-tiles-mel', {
+                name: 'MEL',
+                // sseThreshold: 0.05,
+                source: new itowns.C3DTilesSource({
+                    // url: 'http://localhost/3dtiles/b3dm-mel-3d-subset/tileset.json',
+                    url: 'https://data-query-files-http.dev.ciril.lan/Lille/3dtilesv1/tileset.json'
+                }),
+            }, view);
+            itowns.View.prototype.addLayer.call(view, threedtilesmel);
+
+            // threedtilesmel.whenReady.then(function (layer) {
+            //     update3DTilesHeight(layer, 50, view);
+            // });
+
+            // Add the UI Debug
+            var d = new debug.Debug(view, menuGlobe.gui);
+            debug.createTileDebugUI(menuGlobe.gui, view, view.tileLayer, d);
+            debug.create3dTilesDebugUI(menuGlobe.gui, view, threedtilesmel, d);
+
+            const axesHelper = new itowns.THREE.AxesHelper( 5000000000 );
+            view.scene.add(axesHelper);
+        </script>
+    </body>
+</html>
