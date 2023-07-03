@@ -23,6 +23,10 @@
         <script src="js/GUI/GuiTools.js"></script>
         <script src="js/GUI/LoadingScreen.js"></script>
 
+        <script type="text/javascript">
+            window.THREE = itowns.THREE;
+        </script>
+        <script src="https://unpkg.com/three@0.124.0/examples/js/controls/OrbitControls.js"></script>
 
         <script type="text/javascript">
 
@@ -40,7 +44,7 @@
             const viewerDiv = document.getElementById('viewerDiv');
 
             // Create a GlobeView
-            const view = new itowns.GlobeView(viewerDiv, placement);
+            const view = new itowns.GlobeView(viewerDiv, placement, {noControls: true});
 
             // Setup loading screen and debug menu
             setupLoadingScreen(viewerDiv, view);
@@ -78,28 +82,28 @@
             // ---------- ADD SOME WIDGETS : ----------
 
             // ADD A SCALE :
-            const scale = new itowns_widgets.Scale(view, { position: 'bottom-right', translate: { x: -80 } });
-
-            // ADD A MINIMAP :
-            const minimap = new itowns_widgets.Minimap(
-                view,
-                new itowns.ColorLayer('minimap', {
-                    source: new itowns.VectorTilesSource({
-                        style: 'https://wxs.ign.fr/essentiels/static/vectorTiles/styles/PLAN.IGN/gris.json',
-                        // We don't display mountains and plot related data to ease visualisation
-                        filter: (layer) => !layer['source-layer'].includes('oro_')
-                            && !layer['source-layer'].includes('parcellaire'),
-                    }),
-                    addLabelLayer: { performance: true },
-                }),
-                { cursor: '+' },
-            );
-
-            // ADD NAVIGATION TOOLS :
-            const navigation = new itowns_widgets.Navigation(view, {
-                position: 'bottom-right',
-                translate: { y: -40 },
-            });
+            // const scale = new itowns_widgets.Scale(view, { position: 'bottom-right', translate: { x: -80 } });
+            //
+            // // ADD A MINIMAP :
+            // const minimap = new itowns_widgets.Minimap(
+            //     view,
+            //     new itowns.ColorLayer('minimap', {
+            //         source: new itowns.VectorTilesSource({
+            //             style: 'https://wxs.ign.fr/essentiels/static/vectorTiles/styles/PLAN.IGN/gris.json',
+            //             // We don't display mountains and plot related data to ease visualisation
+            //             filter: (layer) => !layer['source-layer'].includes('oro_')
+            //                 && !layer['source-layer'].includes('parcellaire'),
+            //         }),
+            //         addLabelLayer: { performance: true },
+            //     }),
+            //     { cursor: '+' },
+            // );
+            //
+            // // ADD NAVIGATION TOOLS :
+            // const navigation = new itowns_widgets.Navigation(view, {
+            //     position: 'bottom-right',
+            //     translate: { y: -40 },
+            // });
 
             // ADD A SEARCH BAR :
 
@@ -150,6 +154,10 @@
             });
 
             debug.createTileDebugUI(debugMenu.gui, view);
+
+            controls = new itowns.THREE.OrbitControls(view.camera.camera3D, viewerDiv);
+            controls.addEventListener('change', function _() { view.notifyChange(view.camera.camera3D); });
+
 
         </script>
     </body>
