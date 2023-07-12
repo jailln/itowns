@@ -231,6 +231,19 @@ class Camera {
     // http://www.lighthouse3d.com/tutorials/view-frustum-culling/geometric-approach-testing-boxes/
     // http://www.lighthouse3d.com/tutorials/view-frustum-culling/geometric-approach-testing-boxes-ii/
     isOBBVisible(obb, matrixWorld) {
+        // obb.getSize(size);
+        // aabb.setFromCenterAndSize(new THREE.Vector3(0, 0, 0), size);
+        //
+        // // create a 4x4 transform matrix
+        // matrix.setFromMatrix3(obb.rotation);
+        // matrix.setPosition(obb.center);
+        //
+        // inverse.copy(matrix).invert();
+        //
+        // this.prepareFrustum(inverse); // TODO: apply matriworldinverse ? or don't apply matrix world
+        //
+        // // or call isBox3Visible
+        // return tmp.frustum.intersectsBox(aabb);
         this.prepareFrustum(matrixWorld); // TODO: apply matriworldinverse ? or don't apply matrix world
 
         const planes = tmp.frustum.planes;
@@ -273,7 +286,7 @@ class Camera {
         }
         return true; // box is inside frustum
     }
-    
+
     isSphereVisible(sphere, matrixWorld) {
         this.prepareFrustum(matrixWorld);
         return tmp.frustum.intersectsSphere(sphere);
