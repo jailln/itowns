@@ -26,130 +26,74 @@
 
         <script type="text/javascript">
 
-
-
-            // ---------- CREATE A GlobeView FOR SUPPORTING DATA VISUALIZATION : ----------
-
-            // Define camera initial position
-            const placement = {
-                coord: new itowns.Coordinates('EPSG:4326', 2.351323, 48.856712),
-                range: 25000000,
-            }
-
-            // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
             const viewerDiv = document.getElementById('viewerDiv');
 
-            // Create a GlobeView
-            const view = new itowns.GlobeView(viewerDiv, placement);
+            var scene = new itowns.THREE.Scene();
 
-            // Setup loading screen and debug menu
-            setupLoadingScreen(viewerDiv, view);
-            const debugMenu = new GuiTools('menuDiv', view);
+            function createRenderer() {
+                const renderer = new itowns.THREE.WebGLRenderer({
+                    alpha: true,
+                    antialias: true,
+                    powerPreference: "high-performance",
+                    preserveDrawingBuffer: true,
+                    logarithmicDepthBuffer: true
+                });
+                renderer.setSize(viewerDiv.clientWidth, viewerDiv.clientHeight);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                renderer.info.autoReset = false;
 
+                // Improve color rendering
+                renderer.localClippingEnabled = true;
+                renderer.setClearColor(0x000000, 0);
 
+                // Increase start-up time to render
+                const pmremGenerator = new itowns.THREE.PMREMGenerator(renderer);
+                pmremGenerator.compileEquirectangularShader();
 
-            // ---------- DISPLAY ORTHO-IMAGES : ----------
+                viewerDiv.appendChild(renderer.domElement);
 
-            // Add one imagery layer to the scene. This layer's properties are defined in a json file, but it could be
-            // defined as a plain js object. See `Layer` documentation for more info.
-            itowns.Fetcher.json('./layers/JSONLayers/Ortho.json').then(function _(config) {
-                config.source = new itowns.WMTSSource(config.source);
-                view.addLayer(
-                    new itowns.ColorLayer('Ortho', config),
-                ).then(debugMenu.addLayerGUI.bind(debugMenu));
-            });
-
-
-
-            // ---------- DISPLAY A DIGITAL ELEVATION MODEL : ----------
-
-            // Add two elevation layers, each with a different level of detail. Here again, each layer's properties are
-            // defined in a json file.
-            function addElevationLayerFromConfig(config) {
-                config.source = new itowns.WMTSSource(config.source);
-                view.addLayer(
-                    new itowns.ElevationLayer(config.id, config),
-                ).then(debugMenu.addLayerGUI.bind(debugMenu));
+                return renderer;
             }
-            itowns.Fetcher.json('./layers/JSONLayers/IGN_MNT_HIGHRES.json').then(addElevationLayerFromConfig);
-            itowns.Fetcher.json('./layers/JSONLayers/WORLD_DTM.json').then(addElevationLayerFromConfig);
 
 
-            // ---------- ADD SOME WIDGETS : ----------
-
-            // ADD A SCALE :
-            const scale = new itowns_widgets.Scale(view, { position: 'bottom-right', translate: { x: -80 } });
-
-            // ADD A MINIMAP :
-            const minimap = new itowns_widgets.Minimap(
-                view,
-                new itowns.ColorLayer('minimap', {
-                    source: new itowns.VectorTilesSource({
-                        style: 'https://wxs.ign.fr/essentiels/static/vectorTiles/styles/PLAN.IGN/gris.json',
-                        // We don't display mountains and plot related data to ease visualisation
-                        filter: (layer) => !layer['source-layer'].includes('oro_')
-                            && !layer['source-layer'].includes('parcellaire'),
-                    }),
-                    addLabelLayer: { performance: true },
+            const potreeLayer = new itowns.PotreeLayer('Lion', {
+                source: new itowns.PotreeSource({
+                    file: 'eglise_saint_blaise_arles.js',
+                    url: 'https://raw.githubusercontent.com/iTowns/iTowns2-sample-data/master/pointclouds/eglise_saint_blaise_arles',
+                    crs: '',
                 }),
-                { cursor: '+' },
-            );
-
-            // ADD NAVIGATION TOOLS :
-            const navigation = new itowns_widgets.Navigation(view, {
-                position: 'bottom-right',
-                translate: { y: -40 },
             });
 
-            // ADD A SEARCH BAR :
+            var customRenderer = createRenderer();
+            var rendererSize = customRenderer.getSize(new itowns.THREE.Vector2());
+            var customCamera = new itowns.THREE.PerspectiveCamera(60, rendererSize.width / rendererSize.height, 1, 10000);
+            scene.add(customCamera);
+            const view = new itowns.View('EPSG:3946', viewerDiv, { camera: { cameraThree: customCamera }, renderer: customRenderer });
+            view.mainLoop.gfxEngine.renderer.setClearColor(0xcccccc);
 
-            // You can find more precise explanation on searchbar options in the doc
-            // (http://www.itowns-project.org/itowns/docs/#api/Widgets/Searchbar) and in the searchbar example
-            // (https://www.itowns-project.org/itowns/examples/#widgets_searchbar)
+            view.addLayer(potreeLayer).then(() => {
+                var ratio;
+                var position;
+                var lookAt = new itowns.THREE.Vector3();
+                var size = new itowns.THREE.Vector3();
 
-            // Define options for geocoding service that should be used by the searchbar.
-            const geocodingOptions = {
-                url: new URL(
-                    'https://wxs.ign.fr/ayxvok72rcocdyn8xyvy32og/ols/apis/completion?text=&type=StreetAddress,' +
-                    'PositionOfInterest',
-                ),
-                parser: (response) => {
-                    const map = new Map();
-                    response.results.forEach(location => {
-                        map.set(location.fulltext, new itowns.Coordinates('EPSG:4326', location.x, location.y));
-                    });
-                    return map;
-                },
-                onSelected: (coordinates) => {
-                    view.controls.lookAtCoordinate({ coord: coordinates, range: 20000, tilt: 45, heading: 0 });
-                },
-            }
+                potreeLayer.root.bbox.getSize(size);
+                potreeLayer.root.bbox.getCenter(lookAt);
 
-            // Create the searchbar
-            const searchbar = new itowns_widgets.Searchbar(view, geocodingOptions, {
-                maxSuggestionNumber: 15,
-                placeholder: 'Search a location in France',
-                position: 'top-right',
+                customCamera.far = 2.0 * size.length();
+
+                ratio = size.x / size.z;
+                position = potreeLayer.root.bbox.min.clone().add(
+                    size.multiply({ x: 0, y: 0, z: ratio * 0.5 }));
+                lookAt.z = potreeLayer.root.bbox.min.z;
+
+                view.camera.camera3D.position.copy(position);
+                view.camera.camera3D.lookAt(lookAt);
+                // create controls
+                const controls = new itowns.FirstPersonControls(view, { focusOnClick: true });
+
+                view.notifyChange(view.camera.camera3D);
             });
-
-
-
-            // ---------- DISPLAY ATMOSPHERIC LIGHTING : ----------
-
-            const atmosphere = view.getLayerById('atmosphere');
-            atmosphere.setRealisticOn(!view.isDebugMode);
-
-
-
-            // ---------- DEBUG TOOLS : ----------
-
-            // Toggle atmospheric lighting on/off.
-            const cRL = debugMenu.addGUI('RealisticLighting', !view.isDebugMode, function (v) {
-                atmosphere.setRealisticOn(v);
-                view.notifyChange(atmosphere);
-            });
-
-            debug.createTileDebugUI(debugMenu.gui, view);
 
         </script>
     </body>
