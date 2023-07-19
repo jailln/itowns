@@ -80,6 +80,29 @@ function updatePreSse(camera, height, fov) {
     }
 }
 
+// TODO: move me
+function getPoints(obb) {
+    const points = new Array(8);
+
+    points[0] = new THREE.Vector3(obb.center.x - obb.halfSize.x, obb.center.y - obb.halfSize.y, obb.center.z - obb.halfSize.z);
+    points[1] = new THREE.Vector3(obb.center.x + obb.halfSize.x, obb.center.y - obb.halfSize.y, obb.center.z - obb.halfSize.z);
+    points[2] = new THREE.Vector3(obb.center.x - obb.halfSize.x, obb.center.y + obb.halfSize.y, obb.center.z - obb.halfSize.z);
+    points[3] = new THREE.Vector3(obb.center.x + obb.halfSize.x, obb.center.y + obb.halfSize.y, obb.center.z + obb.halfSize.z);
+    points[4] = new THREE.Vector3(obb.center.x - obb.halfSize.x, obb.center.y - obb.halfSize.y, obb.center.z + obb.halfSize.z);
+    points[5] = new THREE.Vector3(obb.center.x + obb.halfSize.x, obb.center.y - obb.halfSize.y, obb.center.z + obb.halfSize.z);
+    points[6] = new THREE.Vector3(obb.center.x - obb.halfSize.x, obb.center.y + obb.halfSize.y, obb.center.z + obb.halfSize.z);
+    points[7] = new THREE.Vector3(obb.center.x + obb.halfSize.x, obb.center.y + obb.halfSize.y, obb.center.z + obb.halfSize.z);
+
+    const mat4 = new THREE.Matrix4();
+    mat4.setFromMatrix3(obb.rotation);
+    const q = new THREE.Quaternion();
+    q.setFromRotationMatrix(mat4);
+    for (let i = 0; i < points.length; i++) {
+        points[i].applyQuaternion(q);
+    }
+    return points;
+}
+
 /**
  * Wrapper around Three.js camera to expose some geographic helpers.
  *
@@ -230,50 +253,116 @@ class Camera {
     // Implemented from https://www.cse.chalmers.se/~uffe/vfc_bbox.pdf and
     // http://www.lighthouse3d.com/tutorials/view-frustum-culling/geometric-approach-testing-boxes/
     // http://www.lighthouse3d.com/tutorials/view-frustum-culling/geometric-approach-testing-boxes-ii/
+    // isOBBVisible(obb, matrixWorld) {
+    //     this.prepareFrustum(matrixWorld); // TODO: apply matriworldinverse ? or don't apply matrix world
+    //
+    //     const planes = tmp.frustum.planes;
+    //
+    //     obb.rotation.extractBasis(obbXaxis, obbYaxis, obbZaxis);
+    //
+    //     for (let i = 0; i < planes.length; i++) {
+    //         // Compute n-p vertices
+    //         const planeNormal = planes[i].normal;
+    //         const planeNormalBoxSpace = new THREE.Vector3(
+    //             obbXaxis.dot(planeNormal),
+    //             obbYaxis.dot(planeNormal),
+    //             obbZaxis.dot(planeNormal));
+    //
+    //         obbMin.subVectors(obb.center, obb.halfSize);
+    //         obbMax.addVectors(obb.center, obb.halfSize);
+    //         // TODO: regroup if tests
+    //         pVertex.copy(obbMin);
+    //         nVertex.copy(obbMax);
+    //         if (planeNormalBoxSpace.x >= 0) {
+    //             pVertex.x = obbMax.x;
+    //             nVertex.x = obbMin.x;
+    //         }
+    //         if (planeNormalBoxSpace.y >= 0) {
+    //             pVertex.y = obbMax.y;
+    //             nVertex.y = obbMin.y;
+    //         }
+    //         if (planeNormalBoxSpace.z >= 0) {
+    //             pVertex.z = obbMax.z;
+    //             nVertex.z = obbMin.z;
+    //         }
+    //
+    //         // perform culling
+    //         // is the positive vertex outside?
+    //         if (planes[i].distanceToPoint(pVertex) < 0) {
+    //             return false; // Box is outside of frustum
+    //         } else if (planes[i].distanceToPoint(nVertex) < 0) {
+    //             return true; // box intersects frustum
+    //         }
+    //     }
+    //     return true; // box is inside frustum
+    // }
+
+    // isOBBVisible(obb, matrixWorld) {
+    //     this.prepareFrustum(matrixWorld);
+    //     const planes = tmp.frustum.planes;
+    //
+    //     const points = getPoints(obb);
+    //
+    //     for (let i = 0; i < 6; i++) {
+    //         const plane = planes[i];
+    //         let maxDistance = -Infinity;
+    //         for (let j = 0; j < 8; j++) {
+    //             const v = points[j];
+    //             const dist = plane.distanceToPoint(v);
+    //             maxDistance = maxDistance < dist ? dist : maxDistance;
+    //         }
+    //         if (maxDistance < 0) {
+    //             return false;
+    //         }
+    //     }
+    //     return true;
+    // }
+
     isOBBVisible(obb, matrixWorld) {
-        this.prepareFrustum(matrixWorld); // TODO: apply matriworldinverse ? or don't apply matrix world
-
-        const planes = tmp.frustum.planes;
-
-        obb.rotation.extractBasis(obbXaxis, obbYaxis, obbZaxis);
-
-        for (let i = 0; i < planes.length; i++) {
-            // Compute n-p vertices
-            const planeNormal = planes[i].normal;
-            const planeNormalBoxSpace = new THREE.Vector3(
-                obbXaxis.dot(planeNormal),
-                obbYaxis.dot(planeNormal),
-                obbZaxis.dot(planeNormal));
-
-            obbMin.subVectors(obb.center, obb.halfSize);
-            obbMax.addVectors(obb.center, obb.halfSize);
-            // TODO: regroup if tests
-            pVertex.copy(obbMin);
-            nVertex.copy(obbMax);
-            if (planeNormalBoxSpace.x >= 0) {
-                pVertex.x = obbMax.x;
-                nVertex.x = obbMin.x;
-            }
-            if (planeNormalBoxSpace.y >= 0) {
-                pVertex.y = obbMax.y;
-                nVertex.y = obbMin.y;
-            }
-            if (planeNormalBoxSpace.z >= 0) {
-                pVertex.z = obbMax.z;
-                nVertex.z = obbMin.z;
-            }
-
-            // perform culling
-            // is the positive vertex outside?
-            if (planes[i].distanceToPoint(pVertex) < 0) {
-                return false; // Box is outside of frustum
-            } else if (planes[i].distanceToPoint(nVertex) < 0) {
-                return true; // box intersects frustum
-            }
-        }
-        return true; // box is inside frustum
+        return true;
+        // this.prepareFrustum(matrixWorld); // TODO: apply matriworldinverse ? or don't apply matrix world
+        //
+        // const planes = tmp.frustum.planes;
+        //
+        // obb.rotation.extractBasis(obbXaxis, obbYaxis, obbZaxis);
+        //
+        // obbXaxis.addScalar(obb.halfSize.x);
+        // obbYaxis.addScalar(obb.halfSize.y);
+        // obbZaxis.addScalar(obb.halfSize.z);
+        //
+        // for (let i = 0; i < planes.length; i++) {
+        //     // Compute n-p vertices
+        //     const planeNormal = planes[i].normal;
+        //     const radEffective =
+        //         Math.abs(
+        //             planeNormal.x * obbXaxis.x +
+        //             planeNormal.y * obbXaxis.y +
+        //             planeNormal.z * obbXaxis.z,
+        //         ) +
+        //         Math.abs(
+        //             planeNormal.x * obbYaxis.x +
+        //             planeNormal.y * obbYaxis.y +
+        //             planeNormal.z * obbYaxis.z,
+        //         ) +
+        //         Math.abs(
+        //             planeNormal.x * obbZaxis.x +
+        //             planeNormal.y * obbZaxis.y +
+        //             planeNormal.z * obbZaxis.z,
+        //         );
+        //     const distanceToPlane = planeNormal.dot(obb.center) + planes[i].constant;
+        //
+        //     if (distanceToPlane <= -radEffective) {
+        //         // The entire box is on the negative side of the plane normal
+        //     } else if (distanceToPlane >= radEffective) {
+        //         // The entire box is on the positive side of the plane normal
+        //         return true;
+        //     } else {
+        //         return true;
+        //     }
+        // }
+        // return false; // box is inside frustum
     }
-    
+
     isSphereVisible(sphere, matrixWorld) {
         this.prepareFrustum(matrixWorld);
         return tmp.frustum.intersectsSphere(sphere);
