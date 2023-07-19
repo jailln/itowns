@@ -48,9 +48,6 @@ const southWestBottomVec3 = new THREE.Vector3();
 const southEastBottomCarto = new Coordinates('EPSG:4326');
 const southEastBottomCartesian = new Coordinates('EPSG:4978');
 const southEastBottomVec3 = new THREE.Vector3();
-const southEastUpCarto = new Coordinates('EPSG:4326');
-const southEastUpCartesian = new Coordinates('EPSG:4978');
-const southEastUpVec3 = new THREE.Vector3();
 const northWestBottomCarto = new Coordinates('EPSG:4326');
 const northWestBottomCartesian = new Coordinates('EPSG:4978');
 const northWestBottomVec3 = new THREE.Vector3();
@@ -142,32 +139,12 @@ class C3DTBoundingVolume {
         const minHeight = region[4];
         const maxHeight = region[5];
 
-        const westDeg = THREE.MathUtils.radToDeg(west);
-        const eastDeg = THREE.MathUtils.radToDeg(east);
-        const southDeg = THREE.MathUtils.radToDeg(south);
-        const northDeg = THREE.MathUtils.radToDeg(north);
+        const c = computeRegionCenter(east, west, south, north, minHeight, maxHeight);
+        const s = computeRegionHalfSize(east, west, south, north, minHeight, maxHeight);
+        const r = computeRegionRotation(c);
 
-        northWestBottomCarto.setFromValues(westDeg, northDeg, minHeight);
-        northWestBottomCarto.as('EPSG:4978', northWestBottomCartesian);
-        northWestBottomCartesian.toVector3(northWestBottomVec3);
-
-        southEastUpCarto.setFromValues(eastDeg, southDeg, maxHeight);
-        southEastUpCarto.as('EPSG:4978', southEastUpCartesian);
-        southEastUpCartesian.toVector3(southEastUpVec3);
-
-        const regionCenterVec3 = new THREE.Vector3();
-        regionCenterVec3.addVectors(northWestBottomVec3, southEastUpVec3).multiplyScalar(0.5);
-        const radius = new THREE.Vector3().subVectors(northWestBottomVec3, southEastUpVec3).length() / 2.0;
-
-        this.sphere = new THREE.Sphere(regionCenterVec3, radius);
-
-
-        // const c = computeRegionCenter(east, west, south, north, minHeight, maxHeight);
-        // const s = computeRegionHalfSize(east, west, south, north, minHeight, maxHeight);
-        // const r = computeRegionRotation(c);
-        //
-        // this.region = new OBB(c, s, r);
-        // this.region.applyMatrix4(inverseTileTransform);
+        this.region = new OBB(c, s, r);
+        this.region.applyMatrix4(inverseTileTransform);
     }
 
     initBoundingBox(box) {

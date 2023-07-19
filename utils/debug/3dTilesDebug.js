@@ -65,7 +65,7 @@ export default function create3dTilesDebugUI(datDebugTool, view, _3dTileslayer) 
                     const geometry = new THREE.SphereGeometry(metadata.boundingVolume.sphere.radius, 32, 32);
                     const material = new THREE.MeshBasicMaterial({ wireframe: true });
                     helper = new THREE.Mesh(geometry, material);
-                    // helper.position.copy(metadata.boundingVolume.sphere.center);
+                    helper.position.copy(metadata.boundingVolume.sphere.center);
                 }
 
                 // if (helper) {
