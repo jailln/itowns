@@ -20,6 +20,12 @@ const tmp = {
     box3: new THREE.Box3(),
 };
 
+const INTERSECTION = {
+    INSIDE: 'INSIDE',
+    INTERSECTS: 'INTERSECTING',
+    OUTSIDE: 'OUTSIDE',
+};
+
 const ndcBox3 = new THREE.Box3(
     new THREE.Vector3(-1, -1, -1),
     new THREE.Vector3(1, 1, 1),
@@ -93,13 +99,13 @@ function getPoints(obb) {
     points[6] = new THREE.Vector3(obb.center.x - obb.halfSize.x, obb.center.y + obb.halfSize.y, obb.center.z + obb.halfSize.z);
     points[7] = new THREE.Vector3(obb.center.x + obb.halfSize.x, obb.center.y + obb.halfSize.y, obb.center.z + obb.halfSize.z);
 
-    const mat4 = new THREE.Matrix4();
-    mat4.setFromMatrix3(obb.rotation);
-    const q = new THREE.Quaternion();
-    q.setFromRotationMatrix(mat4);
-    for (let i = 0; i < points.length; i++) {
-        points[i].applyQuaternion(q);
-    }
+    // const mat4 = new THREE.Matrix4();
+    // mat4.setFromMatrix3(obb.rotation);
+    // const q = new THREE.Quaternion();
+    // q.setFromRotationMatrix(mat4);
+    // for (let i = 0; i < points.length; i++) {
+    //     points[i].applyQuaternion(q);
+    // }
     return points;
 }
 
@@ -290,8 +296,6 @@ class Camera {
     //         // is the positive vertex outside?
     //         if (planes[i].distanceToPoint(pVertex) < 0) {
     //             return false; // Box is outside of frustum
-    //         } else if (planes[i].distanceToPoint(nVertex) < 0) {
-    //             return true; // box intersects frustum
     //         }
     //     }
     //     return true; // box is inside frustum
@@ -319,48 +323,52 @@ class Camera {
     // }
 
     isOBBVisible(obb, matrixWorld) {
-        return true;
-        // this.prepareFrustum(matrixWorld); // TODO: apply matriworldinverse ? or don't apply matrix world
-        //
-        // const planes = tmp.frustum.planes;
-        //
-        // obb.rotation.extractBasis(obbXaxis, obbYaxis, obbZaxis);
-        //
-        // obbXaxis.addScalar(obb.halfSize.x);
-        // obbYaxis.addScalar(obb.halfSize.y);
-        // obbZaxis.addScalar(obb.halfSize.z);
-        //
-        // for (let i = 0; i < planes.length; i++) {
-        //     // Compute n-p vertices
-        //     const planeNormal = planes[i].normal;
-        //     const radEffective =
-        //         Math.abs(
-        //             planeNormal.x * obbXaxis.x +
-        //             planeNormal.y * obbXaxis.y +
-        //             planeNormal.z * obbXaxis.z,
-        //         ) +
-        //         Math.abs(
-        //             planeNormal.x * obbYaxis.x +
-        //             planeNormal.y * obbYaxis.y +
-        //             planeNormal.z * obbYaxis.z,
-        //         ) +
-        //         Math.abs(
-        //             planeNormal.x * obbZaxis.x +
-        //             planeNormal.y * obbZaxis.y +
-        //             planeNormal.z * obbZaxis.z,
-        //         );
-        //     const distanceToPlane = planeNormal.dot(obb.center) + planes[i].constant;
-        //
-        //     if (distanceToPlane <= -radEffective) {
-        //         // The entire box is on the negative side of the plane normal
-        //     } else if (distanceToPlane >= radEffective) {
-        //         // The entire box is on the positive side of the plane normal
-        //         return true;
-        //     } else {
-        //         return true;
-        //     }
-        // }
-        // return false; // box is inside frustum
+        this.prepareFrustum(matrixWorld); // TODO: apply matriworldinverse ? or don't apply matrix world
+
+        const planes = tmp.frustum.planes;
+
+        obb.rotation.extractBasis(obbXaxis, obbYaxis, obbZaxis);
+
+        obbXaxis.addScalar(obb.halfSize.x);
+        obbYaxis.addScalar(obb.halfSize.y);
+        obbZaxis.addScalar(obb.halfSize.z);
+
+        let intersect = INTERSECTION.INSIDE;
+
+        for (let i = 0; i < planes.length; i++) {
+            // Compute n-p vertices
+            const planeNormal = planes[i].normal;
+            const radEffective =
+                Math.abs(
+                    planeNormal.x * obbXaxis.x +
+                    planeNormal.y * obbXaxis.y +
+                    planeNormal.z * obbXaxis.z,
+                ) +
+                Math.abs(
+                    planeNormal.x * obbYaxis.x +
+                    planeNormal.y * obbYaxis.y +
+                    planeNormal.z * obbYaxis.z,
+                ) +
+                Math.abs(
+                    planeNormal.x * obbZaxis.x +
+                    planeNormal.y * obbZaxis.y +
+                    planeNormal.z * obbZaxis.z,
+                );
+            const distanceToPlane = planeNormal.dot(obb.center) + planes[i].constant;
+
+            if (distanceToPlane <= -radEffective) {
+                // The entire box is on the negative side of the plane normal
+                return false;
+            } else if (distanceToPlane >= radEffective) {
+                // The entire box is on the positive side of the plane normal
+                intersect = INTERSECTION.INSIDE;
+            } else {
+                intersect = INTERSECTION.INTERSECTS;
+            }
+        }
+        if (intersect === INTERSECTION.INSIDE || intersect === INTERSECTION.INTERSECTS) {
+            return true; // box is inside frustum
+        }
     }
 
     isSphereVisible(sphere, matrixWorld) {

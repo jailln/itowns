@@ -10,7 +10,6 @@ class RealOBBHelper extends THREE.Mesh {
         mat4.setFromMatrix3(OBB.rotation);
         this.setRotationFromMatrix(mat4);
         this.position.copy(OBB.center);
-
         this.obb = OBB;
         this.frustumCulled = false;
     }

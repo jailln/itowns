@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OBB } from 'ThreeExtended/math/OBB';
+import OrientationUtils from 'Utils/OrientationUtils';
 import Coordinates from '../Geographic/Coordinates';
 import C3DTilesTypes from './C3DTilesTypes';
 
@@ -77,6 +78,8 @@ function computeRegionHalfSize(east, west, south, north, minHeight, maxHeight) {
     southWestUpCarto.as('EPSG:4978', southWestUpCartesian);
     southWestUpCartesian.toVector3(southWestUpVec3);
 
+    // TODO: inverser sizeX et sizeZ a un impact sur la veracité des bbox: comme ca OK pour 3d tiles dataset de cesium,
+    //  inversé = ok pour dataset Lille. WHY ? Lié à la position sur le globe ?
     const sizeX = southWestBottomVec3.distanceTo(southWestUpVec3);
     const sizeY = southWestBottomVec3.distanceTo(southEastBottomVec3);
     const sizeZ = southWestBottomVec3.distanceTo(northWestBottomVec3);
@@ -86,9 +89,30 @@ function computeRegionHalfSize(east, west, south, north, minHeight, maxHeight) {
 
 // center = bounding box / region center in EPSG:4326
 function computeRegionRotation(center) {
-    const euler = new THREE.Euler(0, THREE.MathUtils.degToRad(-regionCenterCarto.latitude), THREE.MathUtils.degToRad(regionCenterCarto.longitude));
+    // const euler = new THREE.Euler(0, THREE.MathUtils.degToRad(- regionCenterCarto.latitude), THREE.MathUtils.degToRad(regionCenterCarto.longitude));
+    // const mat4Rot = new THREE.Matrix4();
+    // mat4Rot.makeRotationFromEuler(euler);
+    // const mat3Rot = new THREE.Matrix3();
+    // mat3Rot.setFromMatrix4(mat4Rot);
+    // return mat3Rot;
+    // return new THREE.Matrix3();
+
+    // const zAxis = regionCenterCarto.geodesicNormal;
+    // const yAxis = new THREE.Vector3(0, 0, 1);
+    // const xAxis = new THREE.Vector3();
+    // xAxis.crossVectors(yAxis, zAxis);
+    // yAxis.crossVectors(xAxis, zAxis);
+    // const mat4Rot = new THREE.Matrix4();
+    // mat4Rot.makeBasis(xAxis, yAxis, zAxis);
+    // const mat3Rot = new THREE.Matrix3();
+    // mat3Rot.setFromMatrix4(mat4Rot);
+    // return mat3Rot;
+
+    // TODO: Pas mal mais rotation de PI/2 qui ne va pas on dirait; peut etre lié à un mixmatcj long lat dans l'interpretation
+    const q = new THREE.Quaternion();
+    OrientationUtils.quaternionFromEnuToGeocent(regionCenterCarto, q);
     const mat4Rot = new THREE.Matrix4();
-    mat4Rot.makeRotationFromEuler(euler);
+    mat4Rot.makeRotationFromQuaternion(q);
     const mat3Rot = new THREE.Matrix3();
     mat3Rot.setFromMatrix4(mat4Rot);
     return mat3Rot;
