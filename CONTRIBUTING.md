@@ -60,7 +60,7 @@ question or suggestion.
 
 We recommend the use of [iTowns discussions](https://github.com/iTowns/itowns/discussions)
 for suggestions and questions.
-However, there is another way of suggesting imrpovements or asking questions, which is
+However, there is another way of suggesting improvements or asking questions, which is
 through iTowns mailing lists. There is a user mailing list and a developer mailing list.
 
 You can subscribe to the mailing lists here:
@@ -104,6 +104,17 @@ Request.
   [Testing guide](CODING.md#Testing).
 * Write meaningful commit messages, by following the [Angular
   convention](https://github.com/bcoe/conventional-changelog-standard/blob/master/convention.md).
+  Here is a comprehensive list of all commit types we support :
+    * `feat`, `features` or `feature` for some feature addition ;
+    * `fix` for a bug fix ;
+    * `perf` for some performance improvements;
+    * `revert` for an undo operation ;
+    * `doc` or `docs` for some changes on the documentation ;
+    * `refactor`, `refacto` or `refactoring` for some code refactoring ;
+    * `test` or `tests` for changes test related ;
+    * `chore`, `rename` or `workflow` for some work on package versions or
+        dependency updates, some file renaming or some changes on workflow files ;
+    * `example` or `examples` for changes on examples or addition of a new one.
 * Keep the git history clean, rebase your work on the `master` branch of this
   repository.
 * If this is your first contribution to iTowns, add your name to
