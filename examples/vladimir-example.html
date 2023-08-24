@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Itowns - 3d-tiles example</title>
+
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="css/example.css">
+    <link rel="stylesheet" type="text/css" href="css/LoadingScreen.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.6/dat.gui.min.js"></script>
+</head>
+<body>
+<div id="viewerDiv"></div>
+<div id="description">
+    <p><b>Feature Information:</b></p>
+    <div id="featureInfo"></div>
+</div>
+<script src="js/GUI/GuiTools.js"></script>
+<script src="../dist/itowns.js"></script>
+<script src="js/GUI/LoadingScreen.js"></script>
+<script src="../dist/debug.js"></script>
+<script src="js/3dTilesHelper.js"></script>
+<script type="text/javascript">
+    const placement = {
+        coord: new itowns.Coordinates("EPSG:4326", 30.3843158, 59.9494237),
+        range: 500
+    };
+
+    const viewerDiv = document.getElementById("viewerDiv");
+    const view = new itowns.GlobeView(viewerDiv, placement);
+    const debugMenu = new GuiTools("menuDiv", view);
+
+    const tmsSource = new itowns.TMSSource({
+        format: "image/png",
+        crs: "EPSG:3857",
+        url: "https://tile.openstreetmap.org/${z}/${x}/${y}.png",
+        tileMatrixSet: "PM"
+    });
+    const colorLayer = new itowns.ColorLayer("OPENSM", {
+        source: tmsSource
+    });
+    view.addLayer(colorLayer);
+
+    itowns.enableDracoLoader(
+        "./libs/draco/"
+    );
+    itowns.enableKtx2Loader(
+        "./libs/basis/",
+        view.mainLoop.gfxEngine.renderer
+    );
+    const tilesLayer = new itowns.C3DTilesLayer(
+        "3d-tiles",
+        {
+            name: "kikins-chambers",
+            source: new itowns.C3DTilesSource({
+                url:
+                    "https://storage.yandexcloud.net/geotiff/kikins-chambers/tileset.json"
+            }),
+            sseThreshold: 1
+        },
+        view
+    );
+    itowns.View.prototype.addLayer.call(view, tilesLayer);
+</script>
+</body>
+</html>
