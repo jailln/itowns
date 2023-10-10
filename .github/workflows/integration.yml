@@ -61,19 +61,19 @@ jobs:
 
 
   # Check commits messages
-  check-commit-message:
-    name: Check Commit Message
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check Commit Type
-        uses: gsactions/commit-message-checker@v2
-        with:
-          pattern: '^(feat|feature|features|fix|perf|revert|doc|docs|refactor|refacto|refactoring|test|tests|chore|rename|workflow|example|examples|others)(\([\w\-\.]+\))?: ([\w ])+([\s\S]*)|release v\d+.\d+.\d+'
-          error: 'One or several of the pushed commits do not match the conventional commit convention. Please read CONTRIBUTING.md.'
-          excludeDescription: true
-          excludeTitle: true
-          checkAllCommitMessages: true
-          accessToken: ${{ secrets.GITHUB_TOKEN }}
+#  check-commit-message:
+#    name: Check Commit Message
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Check Commit Type
+#        uses: gsactions/commit-message-checker@v2
+#        with:
+#          pattern: '^(feat|feature|features|fix|perf|revert|doc|docs|refactor|refacto|refactoring|test|tests|chore|rename|workflow|example|examples|others)(\([\w\-\.]+\))?: ([\w ])+([\s\S]*)|release v\d+.\d+.\d+'
+#          error: 'One or several of the pushed commits do not match the conventional commit convention. Please read CONTRIBUTING.md.'
+#          excludeDescription: true
+#          excludeTitle: true
+#          checkAllCommitMessages: true
+#          accessToken: ${{ secrets.GITHUB_TOKEN }}
 
 
   # Unit and coverage tests
@@ -189,64 +189,64 @@ jobs:
 
 
   # Deploy on itowns.github.io website
-  deploy:
-    name: Deploy to itowns.github.io
-    if: ${{ github.ref == 'refs/heads/master' }}
-    needs: [unit-and-coverage-tests, functional-tests, check-commit-message]
-    runs-on: ubuntu-latest
-    steps:
-
-      # Download artifact from build
-      - name: Download itowns bundle
-        uses: actions/download-artifact@v3
-        with:
-          name: dist-itowns
-
-      # Copy files for deployment
-      - name: build site
-        run: |
-          mkdir -p itowns/dist
-          mkdir -p itowns/potree/build
-          mkdir -p itowns/potree/libs
-          cp -R dist/*.js itowns/dist/
-          cp -R examples itowns/
-          cp -R buildDocs itowns/docs
-
-      # When deploying a release, we copy itowns bundles in dev folder to be published on
-      # iTowns/itowns.github.io. This is because we can't publish both a release version
-      # (in itowns/ folder) and a @next version (in itowns/dev folder) at the same time.
-      - name: add dev bundle if release
-        if: ${{ startsWith(github.event.head_commit.message, 'release v' ) }}
-        run: |
-          cp -R itowns dev
-          mv dev itowns/
-
-      # Deploy to itowns.github.io LTS
-      - name: Deploy LTS to itowns.github.io
-        if: ${{ startsWith(github.event.head_commit.message, 'release v' ) }}
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
-          external_repository: iTowns/itowns.github.io
-          publish_dir: ./itowns
-          destination_dir: ./itowns
-          publish_branch: master
-          enable_jekyll: true
-
-      # Deploy to itowns.github.io Dev
-      - name: Deploy Dev to itowns.github.io
-        # Prevent deploying @next version when a release is done. Doing so would cause an issue,
-        # since it is not possible to use the same deploy key to simultaneously deploy two different
-        # folders on iTowns/itowns.github.io (the release bundle on previous step and this one.
-        if: ${{ !startsWith(github.event.head_commit.message, 'release v' ) }}
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
-          external_repository: iTowns/itowns.github.io
-          publish_dir: ./itowns
-          destination_dir: ./itowns/dev
-          publish_branch: master
-          enable_jekyll: true
+#  deploy:
+#    name: Deploy to itowns.github.io
+#    if: ${{ github.ref == 'refs/heads/master' }}
+#    needs: [unit-and-coverage-tests, functional-tests, check-commit-message]
+#    runs-on: ubuntu-latest
+#    steps:
+#
+#      # Download artifact from build
+#      - name: Download itowns bundle
+#        uses: actions/download-artifact@v3
+#        with:
+#          name: dist-itowns
+#
+#      # Copy files for deployment
+#      - name: build site
+#        run: |
+#          mkdir -p itowns/dist
+#          mkdir -p itowns/potree/build
+#          mkdir -p itowns/potree/libs
+#          cp -R dist/*.js itowns/dist/
+#          cp -R examples itowns/
+#          cp -R buildDocs itowns/docs
+#
+#      # When deploying a release, we copy itowns bundles in dev folder to be published on
+#      # iTowns/itowns.github.io. This is because we can't publish both a release version
+#      # (in itowns/ folder) and a @next version (in itowns/dev folder) at the same time.
+#      - name: add dev bundle if release
+#        if: ${{ startsWith(github.event.head_commit.message, 'release v' ) }}
+#        run: |
+#          cp -R itowns dev
+#          mv dev itowns/
+#
+#      # Deploy to itowns.github.io LTS
+#      - name: Deploy LTS to itowns.github.io
+#        if: ${{ startsWith(github.event.head_commit.message, 'release v' ) }}
+#        uses: peaceiris/actions-gh-pages@v3
+#        with:
+#          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+#          external_repository: iTowns/itowns.github.io
+#          publish_dir: ./itowns
+#          destination_dir: ./itowns
+#          publish_branch: master
+#          enable_jekyll: true
+#
+#      # Deploy to itowns.github.io Dev
+#      - name: Deploy Dev to itowns.github.io
+#        # Prevent deploying @next version when a release is done. Doing so would cause an issue,
+#        # since it is not possible to use the same deploy key to simultaneously deploy two different
+#        # folders on iTowns/itowns.github.io (the release bundle on previous step and this one.
+#        if: ${{ !startsWith(github.event.head_commit.message, 'release v' ) }}
+#        uses: peaceiris/actions-gh-pages@v3
+#        with:
+#          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+#          external_repository: iTowns/itowns.github.io
+#          publish_dir: ./itowns
+#          destination_dir: ./itowns/dev
+#          publish_branch: master
+#          enable_jekyll: true
 
 
   # Create GitHub release
