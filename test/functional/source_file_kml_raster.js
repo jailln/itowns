@@ -22,6 +22,7 @@ describe('source_file_kml_raster', function _() {
         });
         assert.equal(features.length, 2); // the layer and the LabelLayer
         assert.equal(features[0].uuid, features[1].uuid);
+        
     });
 
     it('should pick feature from Layer with SourceFile', async () => {
