@@ -139,7 +139,7 @@ jobs:
   publish:
     name: Publish NPM package
     if: ${{ github.ref == 'refs/heads/master' }}
-    needs: [unit-and-coverage-tests, functional-tests, check-commit-message]
+    needs: [unit-and-coverage-tests, functional-tests]
     runs-on: ubuntu-latest
     permissions:
         id-token: write
