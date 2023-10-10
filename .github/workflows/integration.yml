@@ -253,7 +253,7 @@ jobs:
   release:
     name: Release GitHub
     if: ${{ github.ref == 'refs/heads/master' && startsWith( github.event.head_commit.message, 'release v' ) }}
-    needs: [unit-and-coverage-tests, functional-tests, check-commit-message]
+    needs: [unit-and-coverage-tests, functional-tests]
     runs-on: ubuntu-latest
     steps:
 
