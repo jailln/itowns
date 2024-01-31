@@ -126,7 +126,7 @@ function executeCommand(command) {
                 } else if (magic == 'pnts') {
                     func = supportedFormats.pnts;
                 } else if (magic == 'glTF') {
-                    func =  supportedFormats.gltf;
+                    func = supportedFormats.gltf;
                 } else {
                     return Promise.reject(`Unsupported magic code ${magic}`);
                 }
