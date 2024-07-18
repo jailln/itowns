@@ -57,6 +57,9 @@ module.exports = () => {
                 '@itowns/geographic': path.resolve(__dirname, 'packages/Geographic/src/index.ts'),
             },
         },
+        externals: {
+            proj4: 'proj4',
+        },
         entry: {
             itowns: [
                 'core-js',
