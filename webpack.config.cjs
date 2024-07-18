@@ -51,6 +51,9 @@ module.exports = () => {
                 '.js': ['.ts', '.js'],
             },
         },
+        externals: {
+            proj4: 'proj4',
+        },
         entry: {
             itowns: [
                 'core-js',
