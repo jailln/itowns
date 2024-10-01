@@ -240,45 +240,41 @@ class TiledGeometryLayer extends GeometryLayer {
      * @returns {Object}
      */
     update(context, layer, node) {
+        // Remove lonely node
         if (!node.parent) {
             return ObjectRemovalHelper.removeChildrenAndCleanup(this, node);
         }
         // early exit if parent' subdivision is in progress
         if (node.parent.pendingSubdivision) {
             node.visible = false;
-            node.material.visible = false;
             this.info.update(node);
-            return undefined;
+            return undefined; // TODO should return null instead?
         }
 
         node.visible = !this.culling(node, context.camera);
+        this.info.update(node);
 
-        if (node.visible) {
-            let requestChildrenUpdate = false;
-
-            node.material.visible = true;
-            this.info.update(node);
-
-            if (node.pendingSubdivision || (TiledGeometryLayer.hasEnoughTexturesToSubdivide(context, node) && this.shouldSubdivideNode(context, node))) {
-                this.subdivideNode(context, node);
-                // display iff children aren't ready
-                node.material.visible = node.pendingSubdivision;
-                this.info.update(node);
-                requestChildrenUpdate = true;
-            }
-
-            if (node.material.visible) {
-                if (!requestChildrenUpdate) {
-                    return ObjectRemovalHelper.removeChildren(this, node);
-                }
-            }
-
-            return requestChildrenUpdate ? node.children.filter(n => n.layer.id === this.id) : undefined;
+        if (!node.visible) {
+            return ObjectRemovalHelper.removeChildren(this, node);
         }
 
-        node.material.visible = false;
-        this.info.update(node);
-        return ObjectRemovalHelper.removeChildren(this, node);
+        const shouldSubdivide = node.pendingSubdivision ||
+            (this.shouldSubdivideNode(context, node) &&
+                TiledGeometryLayer.hasEnoughTexturesToSubdivide(context, node)); // TODO rename hasEnoughTexturesToSubdivide
+
+        if (shouldSubdivide) {
+            this.subdivideNode(context, node); // TODO return promise is ignored. Should we use it? Should it replace the pendingSubdivision mechanism?
+            // display iff children aren't ready
+            node.material.visible = node.pendingSubdivision; // TODO il semblerait quu'on ai besoin de decorreler la visibilité d'un noeud de la visibilité de son materiau ? :thinking:
+            this.info.update(node);
+            return node.children.filter(n => n.layer.id === this.id);
+        }
+
+        if (node.material.visible) {
+            return ObjectRemovalHelper.removeChildren(this, node);
+        }
+
+        return undefined;
     }
 
     convert(requester, extent) {

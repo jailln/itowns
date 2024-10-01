@@ -52,9 +52,9 @@ class TileMesh extends THREE.Mesh {
             set(v) {
                 if (this.#visible !== v) {
                     this.#visible = v;
-                    this.material.visible = v;
                     this.dispatchEvent({ type: v ? 'shown' : 'hidden' });
                 }
+                this.material.visible = v;
             },
         });
     }
