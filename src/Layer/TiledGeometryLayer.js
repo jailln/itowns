@@ -265,7 +265,7 @@ class TiledGeometryLayer extends GeometryLayer {
             if (node.pendingSubdivision || (TiledGeometryLayer.hasEnoughTexturesToSubdivide(context, node) && this.subdivision(context, this, node))) {
                 this.subdivideNode(context, node);
                 // display iff children aren't ready
-                node.material.visible = node.pendingSubdivision;
+                node.material.visible = node.pendingSubdivision; // TODO: when is this updated when the subdivision is over?
                 this.info.update(node);
                 requestChildrenUpdate = true;
             }
@@ -314,43 +314,33 @@ class TiledGeometryLayer extends GeometryLayer {
      * otherwise.
      */
     static hasEnoughTexturesToSubdivide(context, node) {
+        const { elevationLayers, colorLayers } = context;
         const layerUpdateState = node.layerUpdateState || {};
-        let nodeLayer = node.material.getElevationLayer();
 
-        for (const e of context.elevationLayers) {
-            const extents = node.getExtentsByProjection(e.crs);
+        const checkLayer = (layer, nodeLayer) => {
+            const extents = node.getExtentsByProjection(layer.crs);
             const zoom = extents[0].zoom;
-            if (zoom > e.zoom.max || zoom < e.zoom.min) {
-                continue;
-            }
-            if (!e.frozen && e.ready && e.source.extentInsideLimit(node.extent, zoom) && (!nodeLayer || nodeLayer.level < 0)) {
-                // no stop subdivision in the case of a loading error
-                if (layerUpdateState[e.id] && layerUpdateState[e.id].inError()) {
-                    continue;
-                }
-                return false;
-            }
+
+            if (zoom > layer.zoom.max || zoom < layer.zoom.min) { return true; }
+            if (layerUpdateState[layer.id]?.inError()) { return true; }
+
+            return !(layer.ready &&
+                layer.source.extentInsideLimit(node.extent, zoom) &&
+                (!nodeLayer || nodeLayer.level < 0));
+        };
+
+        const elevationLayer = node.material.getElevationLayer();
+        if (elevationLayers.some(e => !e.frozen && !checkLayer(e, elevationLayer))) {
+            return false;
         }
 
-        for (const c of context.colorLayers) {
+        return !colorLayers.some((c) => {
             if (c.frozen || !c.visible || !c.ready) {
-                continue;
-            }
-            const extents = node.getExtentsByProjection(c.crs);
-            const zoom = extents[0].zoom;
-            if (zoom > c.zoom.max || zoom < c.zoom.min) {
-                continue;
-            }
-            // no stop subdivision in the case of a loading error
-            if (layerUpdateState[c.id] && layerUpdateState[c.id].inError()) {
-                continue;
-            }
-            nodeLayer = node.material.getLayer(c.id);
-            if (c.source.extentInsideLimit(node.extent, zoom) && (!nodeLayer || nodeLayer.level < 0)) {
                 return false;
             }
-        }
-        return true;
+            const nodeLayer = node.material.getLayer(c.id);
+            return !checkLayer(c, nodeLayer);
+        });
     }
 
     /**
@@ -367,7 +357,7 @@ class TiledGeometryLayer extends GeometryLayer {
      * @return {Promise}  { description_of_the_return_value }
      */
     subdivideNode(context, node) {
-        if (!node.pendingSubdivision && !node.children.some(n => n.layer == this)) {
+        if (!node.pendingSubdivision && !node.children.some(n => n.layer == this)) { // TODO: some more tests are happening here, they should not ? (or only be a verification? or log something in the else)
             const extents = node.extent.subdivision();
             // TODO: pendingSubdivision mechanism is fragile, get rid of it
             node.pendingSubdivision = true;
@@ -408,18 +398,22 @@ class TiledGeometryLayer extends GeometryLayer {
      * @param {PlanarLayer} layer - This layer, parameter to be removed.
      * @param {TileMesh} node - The node to test.
      *
-     * @return {boolean} - True if the node is subdivisable, otherwise false.
+     * @return {boolean} - True if the node can be subdivided, false otherwise.
      */
     subdivision(context, layer, node) {
         if (node.level < this.minSubdivisionLevel) {
+            // TODO: what is the real purpose of minSubdivision level ? I'm not sure it is really useful since we won't subdivide
+            // if textures are not available...
             return true;
         }
 
-        if (this.maxSubdivisionLevel <= node.level) {
+        if (node.level >= this.maxSubdivisionLevel) {
             return false;
         }
         subdivisionVector.setFromMatrixScale(node.matrixWorld);
         boundingSphereCenter.copy(node.boundingSphere.center).applyMatrix4(node.matrixWorld);
+        // TODO: why multiply by subdivisionVector.x here? Normally the scaling factor is already accounted for in with
+        // the applyMatrix4 above?
         const distance = Math.max(
             0.0,
             context.camera.camera3D.position.distanceTo(boundingSphereCenter) - node.boundingSphere.radius * subdivisionVector.x);
@@ -437,7 +431,7 @@ class TiledGeometryLayer extends GeometryLayer {
         // For the projection of a texture's texel to be less than or equal to one pixel
         const sse = node.screenSize / (this.sizeDiagonalTexture * 2);
 
-        return this.sseSubdivisionThreshold < sse;
+        return sse > this.sseSubdivisionThreshold;
     }
 }
 
