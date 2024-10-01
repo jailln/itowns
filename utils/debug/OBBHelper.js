@@ -11,7 +11,6 @@ class OBBHelper extends THREE.Box3Helper {
 
         this.frustumCulled = false;
         this.matrixAutoUpdate = false;
-        this.rotationAutoUpdate = false;
 
         this.updateMatrixWorld(true);
     }

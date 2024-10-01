@@ -234,7 +234,7 @@ class TiledGeometryLayer extends GeometryLayer {
      * </ul>
      *
      * @param {Object} context - The context of the update; see the {@link
-     * MainLoop} for more informations.
+     * MainLoop} for more information.
      * @param {Layer} layer - Parameter to be removed once all update methods
      * have been aligned.
      * @param {TileMesh} node - The node to update.
