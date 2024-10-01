@@ -14,6 +14,9 @@ let magnitudeSquared = 0.0;
 // vectors for operation purpose
 const scaledHorizonCullingPoint = new THREE.Vector3();
 
+// Max subdivision level for tiles at the pole
+const POLE_MAX_SUBDIVISION_LEVEL = 5;
+
 /**
  * @property {boolean} isGlobeLayer - Used to checkout whether this layer is a
  * GlobeLayer. Default is true. You should not change this, as it is used
@@ -102,15 +105,15 @@ class GlobeLayer extends TiledGeometryLayer {
         return occupancy;
     }
 
-    subdivision(context, layer, node) {
-        if (node.level == 5) {
+    shouldSubdivideNode(context, node) {
+        // Stop pole tiles subdivision at level POLE_MAX_SUBDIVISION_LEVEL
+        if (node.level === POLE_MAX_SUBDIVISION_LEVEL) {
             const row = node.getExtentsByProjection(CRS.tms_4326)[0].row;
-            if (row == 31 || row == 0) {
-                // doesn't subdivise the pole
+            if (row === 31 || row === 0) {
                 return false;
             }
         }
-        return super.subdivision(context, layer, node);
+        return super.shouldSubdivideNode(context, node);
     }
 
     culling(node, camera) {

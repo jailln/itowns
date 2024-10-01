@@ -230,13 +230,11 @@ class TiledGeometryLayer extends GeometryLayer {
      * <ul>
      *  <li>it does not have a parent, then it is removed</li>
      *  <li>its parent is being subdivided</li>
-     *  <li>is not visible in the camera</li>
+     *  <li>is not visible by the camera</li>
      * </ul>
      *
-     * @param {Object} context - The context of the update; see the {@link
-     * MainLoop} for more information.
-     * @param {Layer} layer - Parameter to be removed once all update methods
-     * have been aligned.
+     * @param {Object} context - MainLoop.update context; see {@link MainLoop} for more information.
+     * @param {Layer} layer - Parameter to be removed once all update methods have been aligned.
      * @param {TileMesh} node - The node to update.
      *
      * @returns {Object}
@@ -253,7 +251,6 @@ class TiledGeometryLayer extends GeometryLayer {
             return undefined;
         }
 
-        // do proper culling
         node.visible = !this.culling(node, context.camera);
 
         if (node.visible) {
@@ -262,10 +259,10 @@ class TiledGeometryLayer extends GeometryLayer {
             node.material.visible = true;
             this.info.update(node);
 
-            if (node.pendingSubdivision || (TiledGeometryLayer.hasEnoughTexturesToSubdivide(context, node) && this.subdivision(context, this, node))) {
+            if (node.pendingSubdivision || (TiledGeometryLayer.hasEnoughTexturesToSubdivide(context, node) && this.shouldSubdivideNode(context, node))) {
                 this.subdivideNode(context, node);
                 // display iff children aren't ready
-                node.material.visible = node.pendingSubdivision; // TODO: when is this updated when the subdivision is over?
+                node.material.visible = node.pendingSubdivision;
                 this.info.update(node);
                 requestChildrenUpdate = true;
             }
@@ -391,25 +388,25 @@ class TiledGeometryLayer extends GeometryLayer {
     }
 
     /**
-     * Test the subdvision of a node, compared to this layer.
-     *
-     * @param {Object} context - The context of the update; see the {@link
-     * MainLoop} for more informations.
-     * @param {PlanarLayer} layer - This layer, parameter to be removed.
+     * Checks if a node needs to be subdivided. A node should be subdivided if:
+     * <ul>
+     *  <li>the current subdivision level is bellow this.minSubdivisionLevel</li>
+     *  <li>the current subdivision level is not above this.maxSubdivisionLevel</li>
+     *  <li>the screen space error of the node is bellow this.sseSubdivisionThreshold</li>
+     * </ul>
+     * @param {Object} context - MainLoop.update context; see {@link MainLoop} for more information.
      * @param {TileMesh} node - The node to test.
      *
-     * @return {boolean} - True if the node can be subdivided, false otherwise.
+     * @return {boolean} - True if the node should be subdivided, false otherwise.
      */
-    subdivision(context, layer, node) {
+    shouldSubdivideNode(context, node) {
         if (node.level < this.minSubdivisionLevel) {
-            // TODO: what is the real purpose of minSubdivision level ? I'm not sure it is really useful since we won't subdivide
-            // if textures are not available...
             return true;
         }
-
         if (node.level >= this.maxSubdivisionLevel) {
             return false;
         }
+
         subdivisionVector.setFromMatrixScale(node.matrixWorld);
         boundingSphereCenter.copy(node.boundingSphere.center).applyMatrix4(node.matrixWorld);
         // TODO: why multiply by subdivisionVector.x here? Normally the scaling factor is already accounted for in with
