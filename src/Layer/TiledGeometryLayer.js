@@ -276,7 +276,7 @@ class TiledGeometryLayer extends GeometryLayer {
                 }
             }
 
-            return requestChildrenUpdate ? node.children.filter(n => n.layer == this) : undefined;
+            return requestChildrenUpdate ? node.children.filter(n => n.layer.id === this.id) : undefined;
         }
 
         node.material.visible = false;
