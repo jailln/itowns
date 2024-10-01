@@ -39,7 +39,6 @@ class TileMesh extends THREE.Mesh {
 
         this.frustumCulled = false;
         this.matrixAutoUpdate = false;
-        this.rotationAutoUpdate = false;
 
         this.layerUpdateState = {};
         this.isTileMesh = true;
