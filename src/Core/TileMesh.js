@@ -50,8 +50,9 @@ class TileMesh extends THREE.Mesh {
         Object.defineProperty(this, 'visible', {
             get() { return this.#visible; },
             set(v) {
-                if (this.#visible != v) {
+                if (this.#visible !== v) {
                     this.#visible = v;
+                    this.material.visible = v;
                     this.dispatchEvent({ type: v ? 'shown' : 'hidden' });
                 }
             },
@@ -75,6 +76,7 @@ class TileMesh extends THREE.Mesh {
         this.obb.box3D.getBoundingSphere(this.boundingSphere);
     }
 
+    // TODO: rename to getExtent(crs)
     getExtentsByProjection(crs) {
         return this.#_tms.get(CRS.formatToTms(crs));
     }
