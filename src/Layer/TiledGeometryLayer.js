@@ -350,7 +350,7 @@ class TiledGeometryLayer extends GeometryLayer {
      * @return {Promise}  { description_of_the_return_value }
      */
     subdivideNode(context, node) {
-        if (!node.pendingSubdivision && !node.children.some(n => n.layer == this)) { // TODO: some more tests are happening here, they should not ? (or only be a verification? or log something in the else)
+        if (!node.pendingSubdivision && !node.children.some(n => n.layer.id === this.id)) { // TODO: some more tests are happening here, they should not ? (or only be a verification? or log something in the else)
             const extents = node.extent.subdivision();
             // TODO: pendingSubdivision mechanism is fragile, get rid of it
             node.pendingSubdivision = true;
