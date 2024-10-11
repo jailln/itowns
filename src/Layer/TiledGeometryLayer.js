@@ -308,21 +308,20 @@ class TiledGeometryLayer extends GeometryLayer {
      */
     static hasEnoughTexturesToSubdivide(context, node) {
         const { elevationLayers, colorLayers } = context;
-        const layerUpdateState = node.layerUpdateState || {};
 
         const checkLayer = (layer, nodeLayer) => {
             const extents = node.getExtentsByProjection(layer.crs);
             const zoom = extents[0].zoom;
 
             if (zoom > layer.zoom.max || zoom < layer.zoom.min) { return true; }
-            if (layerUpdateState[layer.id]?.inError()) { return true; }
+            if (node?.layerUpdateState[layer.id]?.inError()) { return true; }
 
             return !(layer.ready &&
                 layer.source.extentInsideLimit(node.extent, zoom) &&
                 (!nodeLayer || nodeLayer.level < 0));
         };
 
-        const elevationLayer = node.material.getElevationLayer();
+        const elevationLayer = node.material.getElevationLayer(); // TODO: This is always the first elevation layer: why? this is probably a bug
         if (elevationLayers.some(e => !e.frozen && !checkLayer(e, elevationLayer))) {
             return false;
         }
