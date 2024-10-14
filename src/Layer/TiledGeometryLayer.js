@@ -316,9 +316,10 @@ class TiledGeometryLayer extends GeometryLayer {
             if (zoom > layer.zoom.max || zoom < layer.zoom.min) { return true; }
             if (node?.layerUpdateState[layer.id]?.inError()) { return true; }
 
-            return !(layer.ready &&
-                layer.source.extentInsideLimit(node.extent, zoom) &&
-                (!nodeLayer || nodeLayer.level < 0));
+            const isInsideLimit = layer.source.extentInsideLimit(node.extent, zoom); // TODO: why should we verify that the node coming from the layer is inside the layer ?
+            const needsSubdivision = !nodeLayer || nodeLayer.level < 0; // TODO: verify the name needsSubdivision
+
+            return !(layer.ready && isInsideLimit && needsSubdivision);
         };
 
         const elevationLayer = node.material.getElevationLayer(); // TODO: This is always the first elevation layer: why? this is probably a bug
