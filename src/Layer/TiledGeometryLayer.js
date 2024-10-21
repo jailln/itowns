@@ -265,6 +265,8 @@ class TiledGeometryLayer extends GeometryLayer {
         if (shouldSubdivide) {
             this.subdivideNode(context, node); // TODO return promise is ignored. Should we use it? Should it replace the pendingSubdivision mechanism?
             // display iff children aren't ready
+            // Note: si on met l'objet 3D visible à false on ne parcours pas ses enfants, si on met seulement le matériau on les parcours
+            // ne serait-il pas mieux d'avoir un graph à update à coté plutôt que d'utiliser l'arbre de scene threejs
             node.material.visible = node.pendingSubdivision; // TODO il semblerait quu'on ai besoin de decorreler la visibilité d'un noeud de la visibilité de son materiau ? :thinking:
             this.info.update(node);
             return node.children.filter(n => n.layer.id === this.id);
@@ -291,6 +293,8 @@ class TiledGeometryLayer extends GeometryLayer {
     }
 
     /**
+     * // TODO: pourquoi les elevationlayer et les colorlayer influent sur la subdivision du tiledgeometrylayer ?
+     * // Normalement on devrait subdiviser dans tous les cas.
      * Tell if a node has enough elevation or color textures to subdivide.
      * Subdivision is prevented if:
      * <ul>
