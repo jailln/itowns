@@ -1,0 +1,138 @@
+{
+    "id": "stmaur",
+    "noDataValue": -99999,
+    "noDataValueBAK": -99999,
+    "updateStrategy": {
+        "type": 0
+    },
+    "source": {
+        "noDataValue": -99999,
+
+        "format": "image/x-bil;bits=32",
+        "crs": "EPSG:4326",
+        "url": "https://tuilage-saint-maur.business-geografic.com/wmts?",
+        "name": "TERRAIN",
+        "tileMatrixSet": "WGS84G",
+        "tileMatrixSetLimits": {
+            "0": {
+                "tileMatrix": "0",
+                "minTileRow": 0,
+                "minTileCol": 0,
+                "maxTileRow": 0,
+                "maxTileCol": 1
+            },
+            "1": {
+                "tileMatrix": "1",
+                "minTileRow": 0,
+                "minTileCol": 0,
+                "maxTileRow": 0,
+                "maxTileCol": 2
+            },
+            "2": {
+                "tileMatrix": "2",
+                "minTileRow": 0,
+                "minTileCol": 0,
+                "maxTileRow": 0,
+                "maxTileCol": 4
+            },
+            "3": {
+                "tileMatrix": "3",
+                "minTileRow": 1,
+                "minTileCol": 1,
+                "maxTileRow": 1,
+                "maxTileCol": 8
+            },
+            "4": {
+                "tileMatrix": "4",
+                "minTileRow": 3,
+                "minTileCol": 3,
+                "maxTileRow": 3,
+                "maxTileCol": 16
+            },
+            "5": {
+                "tileMatrix": "5",
+                "minTileRow": 7,
+                "minTileCol": 7,
+                "maxTileRow": 7,
+                "maxTileCol": 32
+            },
+            "6": {
+                "tileMatrix": "6",
+                "minTileRow": 14,
+                "minTileCol": 14,
+                "maxTileRow": 14,
+                "maxTileCol": 64
+            },
+            "7": {
+                "tileMatrix": "7",
+                "minTileRow": 29,
+                "minTileCol": 29,
+                "maxTileRow": 29,
+                "maxTileCol": 129
+            },
+            "8": {
+                "tileMatrix": "8",
+                "minTileRow": 58,
+                "minTileCol": 58,
+                "maxTileRow": 58,
+                "maxTileCol": 259
+            },
+            "9": {
+                "tileMatrix": "9",
+                "minTileRow": 117,
+                "minTileCol": 117,
+                "maxTileRow": 117,
+                "maxTileCol": 519
+            },
+            "10": {
+                "tileMatrix": "10",
+                "minTileRow": 234,
+                "minTileCol": 234,
+                "maxTileRow": 234,
+                "maxTileCol": 1038
+            },
+            "11": {
+                "tileMatrix": "11",
+                "minTileRow": 468,
+                "minTileCol": 468,
+                "maxTileRow": 468,
+                "maxTileCol": 2076
+            },
+            "12": {
+                "tileMatrix": "12",
+                "minTileRow": 937,
+                "minTileCol": 937,
+                "maxTileRow": 937,
+                "maxTileCol": 4153
+            },
+            "13": {
+                "tileMatrix": "13",
+                "minTileRow": 1874,
+                "minTileCol": 1874,
+                "maxTileRow": 1875,
+                "maxTileCol": 8306
+            },
+            "14": {
+                "tileMatrix": "14",
+                "minTileRow": 3748,
+                "minTileCol": 3748,
+                "maxTileRow": 3751,
+                "maxTileCol": 16613
+            },
+            "15": {
+                "tileMatrix": "15",
+                "minTileRow": 7497,
+                "minTileCol": 7497,
+                "maxTileRow": 7503,
+                "maxTileCol": 33227
+            },
+            "16": {
+                "tileMatrix": "16",
+                "minTileRow": 14994,
+                "minTileCol": 14994,
+                "maxTileRow": 15006,
+                "maxTileCol": 66455
+            }
+        }
+    }
+}
