@@ -80,6 +80,7 @@ class FeatureGeometryLayer extends GeometryLayer {
     }
 
     preUpdate(context, sources) {
+        // TODO: why do we do that?
         if (sources.has(this.parent)) {
             this.object3d.clear();
         }

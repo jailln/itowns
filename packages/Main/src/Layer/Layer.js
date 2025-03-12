@@ -256,6 +256,7 @@ class Layer extends THREE.EventDispatcher {
 
     getData(from, to) {
         const key = this.source.getDataKey(this.source.isVectorSource ? to : from);
+        // TODO we have twice the same cache, here and in the source, can we remove one ?
         let data = this.cache.get(key);
         if (!data) {
             data = this.source.loadData(from, this)

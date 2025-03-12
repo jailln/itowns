@@ -64,7 +64,8 @@
     "lru-cache": "^11.0.2",
     "pbf": "^4.0.1",
     "shpjs": "^6.1.0",
-    "threads": "^1.7.0"
+    "threads": "^1.7.0",
+    "troika-three-text": "^0.52.3"
   },
   "peerDependencies": {
     "proj4": "^2.19.10",

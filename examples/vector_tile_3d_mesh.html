@@ -77,16 +77,16 @@
                 view.addLayer(new itowns.ElevationLayer(config.id, config))
                     .then(debugMenu.addLayerGUI.bind(debugMenu));
             }
-            itowns.Fetcher.json('./layers/JSONLayers/IGN_MNT_HIGHRES.json').then(addElevationLayerFromConfig);
-            itowns.Fetcher.json('./layers/JSONLayers/WORLD_DTM.json').then(addElevationLayerFromConfig);
+            // itowns.Fetcher.json('./layers/JSONLayers/IGN_MNT_HIGHRES.json').then(addElevationLayerFromConfig);
+            // itowns.Fetcher.json('./layers/JSONLayers/WORLD_DTM.json').then(addElevationLayerFromConfig);
 
             // ---------- DISPLAY ORTHO-IMAGES : ----------
 
-            const ortho = itowns.Fetcher.json('./layers/JSONLayers/Ortho.json').then(function _(config) {
-                config.source = new itowns.WMTSSource(config.source);
-                var layer = new itowns.ColorLayer('Ortho', config);
-                return view.addLayer(layer);
-            });
+            // const ortho = itowns.Fetcher.json('./layers/JSONLayers/Ortho.json').then(function _(config) {
+            //     config.source = new itowns.WMTSSource(config.source);
+            //     var layer = new itowns.ColorLayer('Ortho', config);
+            //     return view.addLayer(layer);
+            // });
 
             // ---------- DISPLAY VECTOR TILED MAP DATA AS A ColorLayer : ----------
 
@@ -104,19 +104,18 @@
             });
 
             // Create a ColorLayer to support map data.
-            const mapLayer = new itowns.ColorLayer('MVT', {
+            const mapLayer = new itowns.FeatureGeometryLayer('MVT', {
                 source: mapSource,
-                effect_type: itowns.colorLayerEffects.removeLightColor,
-                effect_parameter: 2.5,
-                addLabelLayer: { performance: true },
-                style: {
-                    text: {
-                        color: '#000000',
-                        haloColor: '#ffffff',
-                        haloWidth: 3,
-                        haloBlur: 2,
-                    }
-                },
+                // addLabelLayer: { performance: true },
+                zoom: { min: 15 }, // TODO: si on ne met pas ça, le layer ne s'affiche pas. c.f. TODO dans FeatureProcessing et https://github.com/iTowns/itowns/issues/2153
+                // style: {
+                    // text: {
+                    //     color: '#000000',
+                    //     haloColor: '#ffffff',
+                    //     haloWidth: 3,
+                    //     haloBlur: 2,
+                    // }
+                // },
             });
 
             // Add the ColorLayer to the scene and to the debug menu.
@@ -126,34 +125,34 @@
             // ---------- DISPLAY VECTOR TILED BUILDING DATA AS 3D MESHES : ----------
 
             // Define the source of the building data : those are vector tiled data from the geoportail.
-            const buildingsSource = new itowns.VectorTilesSource({
-                style: "https://data.geopf.fr/annexes/ressources/vectorTiles/styles/PLAN.IGN/standard.json",
-                // We only want to display buildings related data.
-                filter: (layer) => {
-                    return layer['source-layer'].includes('bati_surf')
-                        && layer.paint["fill-color"];
-                },
-            });
-
-            // Create a FeatureGeometryLayer to support building data.
-            var buildingsLayer = new itowns.FeatureGeometryLayer('VTBuilding',{
-                source: buildingsSource,
-                zoom: { min: 15 },
-                accurate: false,
-                style: {
-                    fill: {
-                        base_altitude: (p) => p.alti_sol || 0,
-                        extrusion_height: (p) => p.hauteur || 0,
-                    }
-                },
-            });
+            // const buildingsSource = new itowns.VectorTilesSource({
+            //     style: "https://data.geopf.fr/annexes/ressources/vectorTiles/styles/PLAN.IGN/standard.json",
+            //     // We only want to display buildings related data.
+            //     filter: (layer) => {
+            //         return layer['source-layer'].includes('bati_surf')
+            //             && layer.paint["fill-color"];
+            //     },
+            // });
+            //
+            // // Create a FeatureGeometryLayer to support building data.
+            // var buildingsLayer = new itowns.FeatureGeometryLayer('VTBuilding',{
+            //     source: buildingsSource,
+            //     zoom: { min: 15 },
+            //     accurate: false,
+            //     style: {
+            //         fill: {
+            //             base_altitude: (p) => p.alti_sol || 0,
+            //             extrusion_height: (p) => p.hauteur || 0,
+            //         }
+            //     },
+            // });
 
             // Add the FeatureGeometryLayer to the scene and to the debug menu.
-            view.addLayer(buildingsLayer)
-                .then((layer) => {
-                    const gui = debug.GeometryDebug.createGeometryDebugUI(debugMenu.gui, view, layer);
-                    debug.GeometryDebug.addWireFrameCheckbox(gui, view, layer);
-                })
+            // view.addLayer(buildingsLayer)
+            //     .then((layer) => {
+            //         const gui = debug.GeometryDebug.createGeometryDebugUI(debugMenu.gui, view, layer);
+            //         debug.GeometryDebug.addWireFrameCheckbox(gui, view, layer);
+            //     })
 
 
 
@@ -161,11 +160,11 @@
 
             debug.createTileDebugUI(debugMenu.gui, view);
 
-            view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function () {
-                ortho.then(function () {
-                    itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
-                }).catch(console.error);
-            });
+            // view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function () {
+            //     ortho.then(function () {
+            //         itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
+            //     }).catch(console.error);
+            // });
 
             window.view = view;
             window.itowns = itowns;

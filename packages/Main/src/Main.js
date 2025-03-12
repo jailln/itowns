@@ -42,6 +42,7 @@ export { default as OBB } from 'Renderer/OBB';
 export { default as Feature, FeatureCollection, FeatureGeometry, FEATURE_TYPES } from 'Core/Feature';
 export { default as Style } from 'Core/Style';
 export { default as Label } from 'Core/Label';
+export { Label3D } from 'Core/Label3D';
 
 // Layers provided by default in iTowns
 // A custom layer should at least implements Layer

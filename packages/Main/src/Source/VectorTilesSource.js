@@ -176,6 +176,7 @@ class VectorTilesSource extends TMSSource {
         let features = cache.get(key);
         if (!features) {
             // otherwise fetch/parse the data
+            // TODO: we wait for all urls to be loaded before processing the result. Maybe we should process them gradually instead
             features = Promise.all(this.urls.map(url =>
                 this.fetcher(this.urlFromExtent(extent, url), this.networkOptions)
                     .then(file => this.parser(file, { out, in: this, extent }))))

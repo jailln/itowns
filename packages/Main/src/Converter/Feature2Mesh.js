@@ -5,6 +5,7 @@ import ReferLayerProperties from 'Layer/ReferencingLayerProperties';
 import { deprecatedFeature2MeshOptions } from 'Core/Deprecated/Undeprecator';
 import { Extent, Coordinates, OrientationUtils } from '@itowns/geographic';
 import Style, { StyleContext } from 'Core/Style';
+import { Label3D } from 'Core/Label3D';
 
 const coord = new Coordinates('EPSG:4326', 0, 0, 0);
 const context = new StyleContext();
@@ -581,6 +582,30 @@ function pointsToInstancedMeshes(feature) {
     }
 }
 
+// TODO: are options useful ?
+// TODO: handle zoom and other stuff from LabelLayer
+// TODO: handle cache and reCreation ?
+function featureToLabel(feature, options) {
+    const labelGroup = new THREE.Group();
+    for (const geometry of feature.geometries) {
+        for (const geometryIndex of geometry.indices) {
+            // TODO: don't create a coord each time.
+            // TODO: in labelLayer, crs is taken from the FeatureCollection
+            const labelCoord = new Coordinates(feature.crs);
+            labelCoord.setFromArray(feature.vertices, geometry.size * geometryIndex.offset);
+            // labelCoord.applyMatrix4(context.collection.matrixWorld);
+            const label = new Label3D();
+            const style = feature.style;
+            style.text.field = geometry.properties.texte; // TODO: tmp but we should use styleoptions.ReadVectorExpression OR better: should be already set when we get here?
+            label.setStyle(feature.style);
+            label.setPosition(labelCoord);
+            label.sync(); // TODO
+            labelGroup.add(label);
+        }
+    }
+    return labelGroup;
+}
+
 /**
  * Convert a {@link Feature} to a Mesh
  * @param {Feature} feature - the feature to convert
@@ -620,7 +645,18 @@ function featureToMesh(feature, options) {
         default:
     }
 
-    if (!mesh.isInstancedMesh) {
+    // Check if feature has a label
+    const isLabel = !!feature.style.text.field; /* feature.style.text */ // TODO: handle icons
+    if (isLabel) {
+        if (Object.keys(feature.style.text).length !== 0) {
+            // For now, replace mesh with label mesh, may be optimized.
+            // Should we return an array of meshes ? i.e. can a feature have a geometry AND a label ?
+            // Or return a Group ?
+            mesh = featureToLabel(feature, options);
+        }
+    }
+
+    if (!mesh.isInstancedMesh && !isLabel) {
         mesh.material.vertexColors = true;
         mesh.material.color = new THREE.Color(0xffffff);
     }

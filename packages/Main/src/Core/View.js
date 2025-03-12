@@ -11,6 +11,7 @@ import Scheduler from 'Core/Scheduler/Scheduler';
 import Picking from 'Core/Picking';
 import LabelLayer from 'Layer/LabelLayer';
 import ObjectRemovalHelper from 'Process/ObjectRemovalHelper';
+import { Text } from 'troika-three-text';
 
 export const VIEW_EVENTS = {
     /**
@@ -268,6 +269,40 @@ class View extends THREE.EventDispatcher {
 
         // push all viewer to keep source.cache
         viewers.push(this);
+
+        /*
+        // Create:
+        const myText = new Text();
+        this.scene.add(myText);
+
+        // Set properties to configure:
+        myText.text = 'Hello world!';
+        myText.fontSize = 200000;
+        // EPSG:3857, Lyon, example vector_tile_raster_2d.html
+        // myText.position.set(538422.427241, 5740726.572330, 0);
+        // EPSG:4978, Lyon, example vector_tile_raster_3d.html
+        const lyon4326coord = new Coordinates('EPSG:4326', 4.835358, 45.756505, 0);
+        const lyon4978coord = lyon4326coord.as('EPSG:4978');
+        myText.position.set(lyon4978coord.x, lyon4978coord.y, lyon4978coord.z);
+        // Orientation (to be done in layer update I guess)
+        myText.quaternion.set(0.24721773123397817, 0.2581342479791685, 0.6745060734515477, 0.645981160917816);
+        // this.addFrameRequester(MAIN_LOOP_EVENTS.BEFORE_RENDER, () => {
+        //     myText.quaternion.copy(this.camera3D.quaternion);
+        //     myText.sync();
+        // });
+        // Center the label in regards with the given position
+        myText.anchorX = 'center'; // Options: 'left', 'center', 'right'
+        myText.anchorY = 'middle'; // Options: 'top', 'middle', 'bottom', 'baseline', 'hanging'
+        // Deactivate material depthTest so it is always rendered upfront (to avoid terrain collision for instance
+        const myTextMaterial = new THREE.MeshBasicMaterial();
+        myTextMaterial.depthTest = false;
+        myText.material = myTextMaterial;
+        myText.color = 0x9966FF;
+
+        myText.updateMatrixWorld();
+        // Update the rendering:
+        myText.sync();
+        */
     }
 
     /**
