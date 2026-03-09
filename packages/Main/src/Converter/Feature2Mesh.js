@@ -747,26 +747,95 @@ export default {
                 const polygonMaterial = new THREE.MeshBasicMaterial();
 
                 polygonMaterial.onBeforeCompile = (shader) => {
-                    // Simple test: offset vertices by +100 along normal
-                    const testOffset = `
-                        // Test: simple offset of +100 along normal
-                        transformed += 300.0;
+                    // Setup elevation uniforms
+                    shader.uniforms.elevationTextures = { value: null };
+                    shader.uniforms.elevationOffsetScales = { value: [] };
+                    shader.uniforms.elevationLayers = { value: [] };
+                    shader.uniforms.elevationTextureCount = { value: 0 };
+                    shader.uniforms.geoidHeight = { value: 0 };
+
+                    // Add elevation struct and functions to vertex shader
+                    const elevationPars = `
+                        #define ELEVATION_RGBA 0
+                        #define ELEVATION_DATA 1
+                        #define ELEVATION_COLOR 2
+
+                        struct Layer {
+                            float scale;
+                            float bias;
+                            int mode;
+                            float zmin;
+                            float zmax;
+                        };
+
+                        uniform Layer elevationLayers[1];
+                        uniform sampler2DArray elevationTextures;
+                        uniform vec4 elevationOffsetScales[1];
+                        uniform int elevationTextureCount;
+                        uniform float geoidHeight;
+
+                        highp float decode32(highp vec4 rgba) {
+                            highp float Sign = 1.0 - step(128.0, rgba[0]) * 2.0;
+                            highp float Exponent = 2.0 * mod(rgba[0], 128.0) + step(128.0, rgba[1]) - 127.0;
+                            highp float Mantissa = mod(rgba[1], 128.0) * 65536.0 + rgba[2] * 256.0 + rgba[3] + float(0x800000);
+                            highp float Result = Sign * exp2(Exponent) * (Mantissa * exp2(-23.0));
+                            return Result;
+                        }
+
+                        float getElevationMode(vec2 uv, sampler2DArray tex, int mode) {
+                            if (mode == ELEVATION_RGBA)
+                                return decode32(texture(tex, vec3(uv, 0.0)).abgr * 255.0);
+                            if (mode == ELEVATION_DATA || mode == ELEVATION_COLOR)
+                                return texture(tex, vec3(uv, 0.0)).r;
+                            return 0.;
+                        }
+
+                        float getElevation(vec2 uv, sampler2DArray tex, vec4 offsetScale, Layer layer) {
+                            // Elevation textures are inverted along the y-axis
+                            uv = vec2(uv.x, 1.0 - uv.y);
+                            uv = uv * offsetScale.zw + offsetScale.xy;
+                            float d = clamp(getElevationMode(uv, tex, layer.mode), layer.zmin, layer.zmax);
+                            return d * layer.scale + layer.bias;
+                        }
                     `;
 
-                    // Inject test offset AFTER begin_vertex (which creates 'transformed')
+                    // Add elevation displacement to vertex transformation
+                    const elevationVertex = `
+                        #ifdef USE_UV
+                        if (elevationTextureCount > 0) {
+                            float elevation = getElevation(uv, elevationTextures, elevationOffsetScales[0], elevationLayers[0]);
+                            // Use the normal attribute to displace vertices
+                            transformed += elevation * normalize(normal);
+                        }
+                        #endif
+                    `;
+
+                    // Inject elevation functions before main()
+                    shader.vertexShader = shader.vertexShader.replace(
+                        'void main() {',
+                        `${elevationPars}\nvoid main() {`,
+                    );
+
+                    // Inject elevation displacement AFTER begin_vertex (which creates 'transformed')
                     // but BEFORE project_vertex (which uses 'transformed' to calculate gl_Position)
                     shader.vertexShader = shader.vertexShader.replace(
                         '#include <begin_vertex>',
-                        `#include <begin_vertex>\n${testOffset}`,
+                        `#include <begin_vertex>\n${elevationVertex}`,
                     );
 
                     polygonMaterial.userData.shader = shader;
-                    console.log('✅ Shader compiled with +100 offset test');
-                    console.log('🔍 Vertex shader snippet around begin_vertex:');
-                    const lines = shader.vertexShader.split('\n');
-                    const beginIdx = lines.findIndex(l => l.includes('begin_vertex'));
-                    if (beginIdx >= 0) {
-                        console.log(lines.slice(Math.max(0, beginIdx - 2), beginIdx + 5).join('\n'));
+
+                    // Copy elevation uniforms from TileMesh material if available
+                    copyElevationUniforms(shader, tileMesh);
+
+                    // Debug logs
+                    if (shader.uniforms.elevationTextureCount.value > 0) {
+                        console.log('✅ Elevation shader compiled and uniforms copied');
+                        console.log('   - Texture count:', shader.uniforms.elevationTextureCount.value);
+                        console.log('   - Has texture:', !!shader.uniforms.elevationTextures.value);
+                        console.log('   - Layer scale:', shader.uniforms.elevationLayers.value[0]?.scale);
+                    } else {
+                        console.warn('⚠️ Elevation shader compiled but no elevation data available');
                     }
                 };
                 options.polygonMaterial = ReferLayerProperties(polygonMaterial, this);
