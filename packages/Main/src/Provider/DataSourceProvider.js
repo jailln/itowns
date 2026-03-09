@@ -3,7 +3,7 @@ export default {
         const layer = command.layer;
         const src = command.extentsSource;
         const dst = command.extentsDestination || src;
-        const promises = src.map((from, i) => (layer.getData(from, dst[i])));
+        const promises = src.map((from, i) => (layer.getData(from, dst[i], command.requester)));
 
         // partialLoading sets the return promise as fulfilled if at least one sub-promise is fulfilled
         // It waits until all promises are resolved

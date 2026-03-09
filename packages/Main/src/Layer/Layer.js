@@ -255,12 +255,12 @@ class Layer extends THREE.EventDispatcher {
         return data;
     }
 
-    getData(from, to) {
+    getData(from, to, tileMesh) {
         const key = this.source.getDataKey(this.source.isVectorSource ? to : from);
         let data = this.cache.get(key);
         if (!data) {
             data = this.source.loadData(from, this)
-                .then(feat => this.convert(feat, to), (err) => {
+                .then(feat => this.convert(feat, to, tileMesh), (err) => {
                     throw err;
                 });
             this.cache.set(key, data);

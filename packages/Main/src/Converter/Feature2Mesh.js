@@ -5,11 +5,50 @@ import ReferLayerProperties from 'Layer/ReferencingLayerProperties';
 import { deprecatedFeature2MeshOptions } from 'Core/Deprecated/Undeprecator';
 import { Extent, Coordinates, OrientationUtils } from '@itowns/geographic';
 import Style, { StyleContext } from 'Core/Style';
+import DEMUtils from 'Utils/DEMUtils';
 
 const coord = new Coordinates('EPSG:4326', 0, 0, 0);
 const context = new StyleContext();
 const defaultStyle = new Style();
 let style;
+
+/**
+ * Copy elevation uniforms from a TileMesh's LayeredMaterial to a Feature2Mesh shader.
+ * This allows features to use the same elevation data as their parent tile.
+ *
+ * @param {Object} shader - The compiled shader from onBeforeCompile
+ * @param {TileMesh} tileMesh - The parent TileMesh (tileMesh from FeatureProcessing)
+ */
+function copyElevationUniforms(shader, tileMesh) {
+    // Check if tileMesh is a TileMesh with a LayeredMaterial
+    if (!tileMesh || !tileMesh.isTileMesh || !tileMesh.material || tileMesh.material.name !== 'LayeredMaterial' || !shader) {
+        return;
+    }
+
+    const tileMaterial = tileMesh.material;
+    const tileUniforms = tileMaterial.uniforms;
+
+    // Copy elevation texture and related uniforms
+    if (tileUniforms.elevationTextures && tileUniforms.elevationTextures.value) {
+        shader.uniforms.elevationTextures.value = tileUniforms.elevationTextures.value;
+        shader.uniforms.elevationTextureCount.value = tileUniforms.elevationTextureCount.value;
+
+        // Copy elevation layers (scale, bias, mode, zmin, zmax)
+        if (tileUniforms.elevationLayers && tileUniforms.elevationLayers.value) {
+            shader.uniforms.elevationLayers.value = tileUniforms.elevationLayers.value.slice(0, 1);
+        }
+
+        // Copy elevation offset scales (UV transformation)
+        if (tileUniforms.elevationOffsetScales && tileUniforms.elevationOffsetScales.value) {
+            shader.uniforms.elevationOffsetScales.value = tileUniforms.elevationOffsetScales.value.slice(0, 1);
+        }
+
+        // Copy geoid height
+        if (tileUniforms.geoidHeight) {
+            shader.uniforms.geoidHeight.value = tileUniforms.geoidHeight.value;
+        }
+    }
+}
 
 const dim_ref = new THREE.Vector2();
 const dim = new THREE.Vector2();
@@ -406,6 +445,21 @@ function featureToPolygon(feature, options) {
     geom.setAttribute('batchId', new THREE.BufferAttribute(batchIds, 1));
     geom.setIndex(new THREE.BufferAttribute(getIntArrayFromSize(indices, vertices.length / 3), 1));
 
+    // Compute vertex normals for elevation displacement in shader
+    geom.computeVertexNormals();
+
+    // Generate UVs based on bounding box for elevation texture sampling
+    // This creates a simple planar projection of UVs
+    geom.computeBoundingBox();
+    const bbox = geom.boundingBox;
+    const uvs = new Float32Array(vertices.length / 3 * 2);
+    for (let i = 0, j = 0; i < vertices.length; i += 3, j += 2) {
+        // Normalize position within bounding box to [0,1] range
+        uvs[j] = (vertices[i] - bbox.min.x) / (bbox.max.x - bbox.min.x);
+        uvs[j + 1] = (vertices[i + 1] - bbox.min.y) / (bbox.max.y - bbox.min.y);
+    }
+    geom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+
     return new THREE.Mesh(geom, options.polygonMaterial);
 }
 
@@ -462,6 +516,10 @@ function featureToExtrudedPolygon(feature, options) {
             const localCoord = context.setLocalCoordinatesFromArray(ptsIn, i);
             style.setContext(context);
             const { base_altitude, extrusion_height, color } = style.fill;
+
+/*            if (base_altitude === 'terrain') {
+                DEMUtils.getElevationValueAt(context, this.coordinates, DEMUtils.FAST_READ_Z)
+            } */
 
             coord.copy(localCoord)
                 .applyMatrix4(context.collection.matrixWorld);
@@ -613,6 +671,14 @@ function featureToMesh(feature, options) {
         case FEATURE_TYPES.POLYGON:
             if (style.isExtruded()) {
                 mesh = featureToExtrudedPolygon(feature, options);
+                mesh.onBeforeRender = function () {
+                    // copyElevationUniforms(mesh.material.userData.shader, options.tileMesh);
+                    mesh.material.needsUpdate = true;
+
+                    // Track actual usage every time this mesh is rendered
+                    // Use global current rendering view ID set by MainLoop
+                    /* this.material.markAsRendered(); */
+                };
             } else {
                 mesh = featureToPolygon(feature, options);
             }
@@ -670,7 +736,7 @@ export default {
      */
     convert(options = {}) {
         deprecatedFeature2MeshOptions(options);
-        return function _convert(collection) {
+        return function _convert(collection, extentDestination, tileMesh) {
             if (!collection) { return; }
 
             if (!options.pointMaterial) {
@@ -678,7 +744,32 @@ export default {
                 // TODO: next step is move these properties to Style
                 options.pointMaterial = ReferLayerProperties(new THREE.PointsMaterial(), this);
                 options.lineMaterial = ReferLayerProperties(new THREE.LineBasicMaterial(), this);
-                options.polygonMaterial = ReferLayerProperties(new THREE.MeshBasicMaterial(), this);
+                const polygonMaterial = new THREE.MeshBasicMaterial();
+
+                polygonMaterial.onBeforeCompile = (shader) => {
+                    // Simple test: offset vertices by +100 along normal
+                    const testOffset = `
+                        // Test: simple offset of +100 along normal
+                        transformed += 300.0;
+                    `;
+
+                    // Inject test offset AFTER begin_vertex (which creates 'transformed')
+                    // but BEFORE project_vertex (which uses 'transformed' to calculate gl_Position)
+                    shader.vertexShader = shader.vertexShader.replace(
+                        '#include <begin_vertex>',
+                        `#include <begin_vertex>\n${testOffset}`,
+                    );
+
+                    polygonMaterial.userData.shader = shader;
+                    console.log('✅ Shader compiled with +100 offset test');
+                    console.log('🔍 Vertex shader snippet around begin_vertex:');
+                    const lines = shader.vertexShader.split('\n');
+                    const beginIdx = lines.findIndex(l => l.includes('begin_vertex'));
+                    if (beginIdx >= 0) {
+                        console.log(lines.slice(Math.max(0, beginIdx - 2), beginIdx + 5).join('\n'));
+                    }
+                };
+                options.polygonMaterial = ReferLayerProperties(polygonMaterial, this);
             }
 
             // In the case we didn't instanciate the layer (this) before the convert, we can pass
@@ -693,6 +784,7 @@ export default {
             if (!features || features.length == 0) { return; }
 
             const meshes = features.map((feature) => {
+                options.tileMesh = tileMesh;
                 const mesh = featureToMesh(feature, options);
                 mesh.layer = this;
                 return mesh;
