@@ -12,6 +12,16 @@ const context = new StyleContext();
 const defaultStyle = new Style();
 let style;
 
+/*
+    key = `z${extent.zoom}r${extent.row}c${extent.col}`
+    value = {
+        i: int,
+        tileMesh: TileMesh,
+        FeatureMesh: FeatureMesh
+    }
+ */
+const tileMeshCountMap = new Map();
+
 /**
  * Copy elevation uniforms from a TileMesh's LayeredMaterial to a Feature2Mesh shader.
  * This allows features to use the same elevation data as their parent tile.
@@ -959,13 +969,13 @@ export default {
                 copyElevationUniforms(shader, tileMesh);
 
                 // Debug logs
-                if (shader.uniforms.elevationTextureCount.value > 0) {
+/*                if (shader.uniforms.elevationTextureCount.value > 0) {
                     console.log('✅ Tile shader compiled:', {
                         tileId: tileMesh?.id,
                         textureCount: shader.uniforms.elevationTextureCount.value,
                         textureUUID: shader.uniforms.elevationTextures.value?.[0]?.uuid?.slice(0, 8),
                     });
-                }
+                } */
             };
 
             // Apply layer properties to this tile's material
@@ -1001,6 +1011,24 @@ export default {
                 return mesh;
             });
             const featureNode = new FeatureMesh(meshes, collection);
+
+            tileMesh.layer.addEventListener('TERRAIN_TILE_LOADED', (tileMesh) => {
+                console.log('test');
+            });
+
+ /*           const tms = tileMesh._tms.get('EPSG:4326')[0];
+            const tileKey = `z${tms.zoom}r${tms.row}c${tms.col}`;
+            if (tileMeshCountMap.get(tileKey)) {
+                tileMeshCountMap.get(tileKey).i++;
+            } else {
+                const val = {
+                    i: 1,
+                    tileMesh,
+                    featureMesh: featureNode,
+                };
+                tileMeshCountMap.set(tileKey, val);
+            }
+            console.log(tileMeshCountMap); */
 
             return featureNode;
         };

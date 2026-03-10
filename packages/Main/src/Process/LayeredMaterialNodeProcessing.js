@@ -236,6 +236,7 @@ export function updateLayeredMaterialNodeElevation(context, layer, node, parent)
             const pitchs = computePitchs(results, extentsDestination);
             nodeLayer.setTextures(results, pitchs);
             node.layerUpdateState[layer.id].success();
+            layer.dispatchEvent({ type: 'TERRAIN_TILE_LOADED', node });
         },
         err => handlingError(err, node, layer, targetLevel, context.view));
 }
