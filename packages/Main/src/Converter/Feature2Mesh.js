@@ -47,6 +47,7 @@ function copyElevationUniforms(shader, tileMesh) {
         if (tileUniforms.geoidHeight) {
             shader.uniforms.geoidHeight.value = tileUniforms.geoidHeight.value;
         }
+        // shader.uniforms.offset = { value: 300 };
     }
 }
 
@@ -448,15 +449,71 @@ function featureToPolygon(feature, options) {
     // Compute vertex normals for elevation displacement in shader
     geom.computeVertexNormals();
 
-    // Generate UVs based on bounding box for elevation texture sampling
-    // This creates a simple planar projection of UVs
-    geom.computeBoundingBox();
-    const bbox = geom.boundingBox;
+    // Generate UVs relative to tile extent for proper elevation sampling
+    // Vertices are in local space, so we need to transform them to world space first
     const uvs = new Float32Array(vertices.length / 3 * 2);
-    for (let i = 0, j = 0; i < vertices.length; i += 3, j += 2) {
-        // Normalize position within bounding box to [0,1] range
-        uvs[j] = (vertices[i] - bbox.min.x) / (bbox.max.x - bbox.min.x);
-        uvs[j + 1] = (vertices[i + 1] - bbox.min.y) / (bbox.max.y - bbox.min.y);
+
+    if (options.tileMesh?.extent) {
+        // Use tileMesh extent and convert CRS if needed
+        const tileExtent = options.tileMesh.extent;
+        const worldVertex = new THREE.Vector3();
+
+        // Get tile bounds in the collection's CRS
+        let tileMinX; let tileMinY; let tileMaxX; let
+            tileMaxY;
+
+        if (tileExtent.crs === 'EPSG:4326') {
+            // Convert geographic extent to the collection's projection (usually EPSG:3857)
+            const minCoord = new Coordinates(tileExtent.crs, tileExtent.west, tileExtent.south);
+            const maxCoord = new Coordinates(tileExtent.crs, tileExtent.east, tileExtent.north);
+
+            minCoord.as(context.collection.crs, minCoord);
+            maxCoord.as(context.collection.crs, maxCoord);
+
+            tileMinX = minCoord.x;
+            tileMinY = minCoord.y;
+            tileMaxX = maxCoord.x;
+            tileMaxY = maxCoord.y;
+        } else {
+            tileMinX = tileExtent.west;
+            tileMinY = tileExtent.south;
+            tileMaxX = tileExtent.east;
+            tileMaxY = tileExtent.north;
+        }
+
+        const tileWidth = tileMaxX - tileMinX;
+        const tileHeight = tileMaxY - tileMinY;
+
+        // Transform vertices from local space to world space using collection matrix
+        for (let i = 0, j = 0; i < vertices.length; i += 3, j += 2) {
+            worldVertex.set(vertices[i], vertices[i + 1], vertices[i + 2]);
+            worldVertex.applyMatrix4(context.collection.matrixWorld);
+
+            // Compute UVs based on world position within tile extent
+            uvs[j] = (worldVertex.x - tileMinX) / tileWidth;
+            uvs[j + 1] = (worldVertex.y - tileMinY) / tileHeight;
+        }
+
+        // Debug: log UV range (sample 10%)
+        if (Math.random() < 0.1) {
+            let minU = 1; let maxU = 0; let minV = 1; let
+                maxV = 0;
+            for (let j = 0; j < uvs.length; j += 2) {
+                minU = Math.min(minU, uvs[j]);
+                maxU = Math.max(maxU, uvs[j]);
+                minV = Math.min(minV, uvs[j + 1]);
+                maxV = Math.max(maxV, uvs[j + 1]);
+            }
+            // console.log('🔍 Polygon UV:', { u: [minU.toFixed(3), maxU.toFixed(3)], v: [minV.toFixed(3), maxV.toFixed(3)] });
+        }
+    } else {
+        // Fallback to local bounding box if no collection context
+        geom.computeBoundingBox();
+        const bbox = geom.boundingBox;
+        for (let i = 0, j = 0; i < vertices.length; i += 3, j += 2) {
+            uvs[j] = (vertices[i] - bbox.min.x) / (bbox.max.x - bbox.min.x);
+            uvs[j + 1] = (vertices[i + 1] - bbox.min.y) / (bbox.max.y - bbox.min.y);
+        }
     }
     geom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
 
@@ -517,7 +574,7 @@ function featureToExtrudedPolygon(feature, options) {
             style.setContext(context);
             const { base_altitude, extrusion_height, color } = style.fill;
 
-/*            if (base_altitude === 'terrain') {
+            /*            if (base_altitude === 'terrain') {
                 DEMUtils.getElevationValueAt(context, this.coordinates, DEMUtils.FAST_READ_Z)
             } */
 
@@ -589,6 +646,60 @@ function featureToExtrudedPolygon(feature, options) {
 
     geom.setIndex(new THREE.BufferAttribute(getIntArrayFromSize(indices, vertices.length / 3), 1));
 
+    // Generate UVs relative to tile extent for proper elevation sampling
+    // Vertices are in local space, so we need to transform them to world space first
+    const uvs = new Float32Array(vertices.length / 3 * 2);
+
+    if (options.tileMesh?.extent) {
+        // Use tileMesh extent and convert CRS if needed
+        const tileExtent = options.tileMesh.extent;
+        const worldVertex = new THREE.Vector3();
+
+        // Get tile bounds in the collection's CRS
+        let tileMinX; let tileMinY; let tileMaxX; let
+            tileMaxY;
+
+        if (tileExtent.crs === 'EPSG:4326') {
+            // Convert geographic extent to the collection's projection (usually EPSG:3857)
+            const minCoord = new Coordinates(tileExtent.crs, tileExtent.west, tileExtent.south);
+            const maxCoord = new Coordinates(tileExtent.crs, tileExtent.east, tileExtent.north);
+
+            minCoord.as(context.collection.crs, minCoord);
+            maxCoord.as(context.collection.crs, maxCoord);
+
+            tileMinX = minCoord.x;
+            tileMinY = minCoord.y;
+            tileMaxX = maxCoord.x;
+            tileMaxY = maxCoord.y;
+        } else {
+            tileMinX = tileExtent.west;
+            tileMinY = tileExtent.south;
+            tileMaxX = tileExtent.east;
+            tileMaxY = tileExtent.north;
+        }
+
+        const tileWidth = tileMaxX - tileMinX;
+        const tileHeight = tileMaxY - tileMinY;
+
+        // Transform vertices from local space to world space using collection matrix
+        for (let i = 0, j = 0; i < vertices.length; i += 3, j += 2) {
+            worldVertex.set(vertices[i], vertices[i + 1], vertices[i + 2]);
+            worldVertex.applyMatrix4(context.collection.matrixWorld);
+
+            // Compute UVs based on world position within tile extent
+            uvs[j] = (worldVertex.x - tileMinX) / tileWidth;
+            uvs[j + 1] = (worldVertex.y - tileMinY) / tileHeight;
+        }
+    } else {
+        // Fallback to local bounding box if no collection context
+        geom.computeBoundingBox();
+        const bbox = geom.boundingBox;
+        for (let i = 0, j = 0; i < vertices.length; i += 3, j += 2) {
+            uvs[j] = (vertices[i] - bbox.min.x) / (bbox.max.x - bbox.min.x);
+            uvs[j + 1] = (vertices[i + 1] - bbox.min.y) / (bbox.max.y - bbox.min.y);
+        }
+    }
+    geom.setAttribute('featureUv', new THREE.BufferAttribute(uvs, 2));
     return new THREE.Mesh(geom, options.polygonMaterial);
 }
 
@@ -668,21 +779,20 @@ function featureToMesh(feature, options) {
         case FEATURE_TYPES.LINE:
             mesh = featureToLine(feature, options);
             break;
-        case FEATURE_TYPES.POLYGON:
+        case FEATURE_TYPES.POLYGON: {
             if (style.isExtruded()) {
                 mesh = featureToExtrudedPolygon(feature, options);
-                mesh.onBeforeRender = function () {
-                    // copyElevationUniforms(mesh.material.userData.shader, options.tileMesh);
-                    mesh.material.needsUpdate = true;
-
-                    // Track actual usage every time this mesh is rendered
-                    // Use global current rendering view ID set by MainLoop
-                    /* this.material.markAsRendered(); */
-                };
             } else {
                 mesh = featureToPolygon(feature, options);
             }
+
+            // Store tileMesh info for debugging
+            mesh.userData.tileMeshId = options.tileMesh?.id;
+            mesh.userData.tileMeshLevel = options.tileMesh?.level;
+
+            // No need for onBeforeRender - each tile has its own material with uniforms set in onBeforeCompile
             break;
+        }
         default:
     }
 
@@ -739,23 +849,31 @@ export default {
         return function _convert(collection, extentDestination, tileMesh) {
             if (!collection) { return; }
 
+            // Create materials once per layer (not per tile)
             if (!options.pointMaterial) {
-                // Opacity and wireframe refered with layer properties
-                // TODO: next step is move these properties to Style
                 options.pointMaterial = ReferLayerProperties(new THREE.PointsMaterial(), this);
                 options.lineMaterial = ReferLayerProperties(new THREE.LineBasicMaterial(), this);
-                const polygonMaterial = new THREE.MeshBasicMaterial();
+            }
 
-                polygonMaterial.onBeforeCompile = (shader) => {
-                    // Setup elevation uniforms
-                    shader.uniforms.elevationTextures = { value: null };
-                    shader.uniforms.elevationOffsetScales = { value: [] };
-                    shader.uniforms.elevationLayers = { value: [] };
-                    shader.uniforms.elevationTextureCount = { value: 0 };
-                    shader.uniforms.geoidHeight = { value: 0 };
+            // Create a NEW polygon material for THIS tile so each tile has independent uniforms
+            const polygonMaterial = new THREE.MeshBasicMaterial();
 
-                    // Add elevation struct and functions to vertex shader
-                    const elevationPars = `
+            polygonMaterial.onBeforeCompile = (shader) => {
+                // Setup elevation uniforms with proper defaults
+                shader.uniforms.elevationTextures = { value: null };
+                shader.uniforms.elevationOffsetScales = { value: [new THREE.Vector4(0, 0, 1, 1)] };
+                shader.uniforms.elevationLayers = { value: [{
+                    scale: 1.0,
+                    bias: 0.0,
+                    mode: 0,
+                    zmin: 0.0,
+                    zmax: 10000.0,
+                }] };
+                shader.uniforms.elevationTextureCount = { value: 0 };
+                shader.uniforms.geoidHeight = { value: 0 };
+
+                // Add elevation struct and functions to vertex shader
+                const elevationPars = `
                         #define ELEVATION_RGBA 0
                         #define ELEVATION_DATA 1
                         #define ELEVATION_COLOR 2
@@ -767,12 +885,14 @@ export default {
                             float zmin;
                             float zmax;
                         };
+                        attribute vec2 featureUv;   // your own UV, not Three.js's
 
                         uniform Layer elevationLayers[1];
                         uniform sampler2DArray elevationTextures;
                         uniform vec4 elevationOffsetScales[1];
                         uniform int elevationTextureCount;
                         uniform float geoidHeight;
+                        uniform float offset;
 
                         highp float decode32(highp vec4 rgba) {
                             highp float Sign = 1.0 - step(128.0, rgba[0]) * 2.0;
@@ -799,47 +919,58 @@ export default {
                         }
                     `;
 
-                    // Add elevation displacement to vertex transformation
-                    const elevationVertex = `
-                        #ifdef USE_UV
+                // Add elevation displacement to vertex transformation
+                const elevationVertex = `
+                        // #ifdef USE_UV
                         if (elevationTextureCount > 0) {
-                            float elevation = getElevation(uv, elevationTextures, elevationOffsetScales[0], elevationLayers[0]);
+                            float elevation = getElevation(featureUv, elevationTextures, elevationOffsetScales[0], elevationLayers[0]);
                             // Use the normal attribute to displace vertices
-                            transformed += elevation * normalize(normal);
+                            // transformed += elevation * normalize(normal);
+                            // transformed += 300.0 * normalize(normal);
+                            transformed += elevation * vec3(0.0,0.0,1.0);
+                            // transformed += elevation ;
+                            // transformed += offset;
+                            // transformed += 300.0;
+
                         }
-                        #endif
+                                                    // transformed += 300.0;
+
+                        // #endif
+                                // transformed += 300.0;
+
                     `;
 
-                    // Inject elevation functions before main()
-                    shader.vertexShader = shader.vertexShader.replace(
-                        'void main() {',
-                        `${elevationPars}\nvoid main() {`,
-                    );
+                // Inject elevation functions before main()
+                shader.vertexShader = shader.vertexShader.replace(
+                    'void main() {',
+                    `${elevationPars}\nvoid main() {`,
+                );
 
-                    // Inject elevation displacement AFTER begin_vertex (which creates 'transformed')
-                    // but BEFORE project_vertex (which uses 'transformed' to calculate gl_Position)
-                    shader.vertexShader = shader.vertexShader.replace(
-                        '#include <begin_vertex>',
-                        `#include <begin_vertex>\n${elevationVertex}`,
-                    );
+                // Inject elevation displacement AFTER begin_vertex (which creates 'transformed')
+                // but BEFORE project_vertex (which uses 'transformed' to calculate gl_Position)
+                shader.vertexShader = shader.vertexShader.replace(
+                    '#include <begin_vertex>',
+                    `#include <begin_vertex>\n${elevationVertex}`,
+                );
 
-                    polygonMaterial.userData.shader = shader;
+                polygonMaterial.userData.shader = shader;
 
-                    // Copy elevation uniforms from TileMesh material if available
-                    copyElevationUniforms(shader, tileMesh);
+                // Copy elevation uniforms from TileMesh material if available
+                copyElevationUniforms(shader, tileMesh);
 
-                    // Debug logs
-                    if (shader.uniforms.elevationTextureCount.value > 0) {
-                        console.log('✅ Elevation shader compiled and uniforms copied');
-                        console.log('   - Texture count:', shader.uniforms.elevationTextureCount.value);
-                        console.log('   - Has texture:', !!shader.uniforms.elevationTextures.value);
-                        console.log('   - Layer scale:', shader.uniforms.elevationLayers.value[0]?.scale);
-                    } else {
-                        console.warn('⚠️ Elevation shader compiled but no elevation data available');
-                    }
-                };
-                options.polygonMaterial = ReferLayerProperties(polygonMaterial, this);
-            }
+                // Debug logs
+                if (shader.uniforms.elevationTextureCount.value > 0) {
+                    console.log('✅ Tile shader compiled:', {
+                        tileId: tileMesh?.id,
+                        textureCount: shader.uniforms.elevationTextureCount.value,
+                        textureUUID: shader.uniforms.elevationTextures.value?.[0]?.uuid?.slice(0, 8),
+                    });
+                }
+            };
+
+            // Apply layer properties to this tile's material
+            // const tilePolygonMaterial = ReferLayerProperties(polygonMaterial, this);
+            options.polygonMaterial = ReferLayerProperties(polygonMaterial, this);
 
             // In the case we didn't instanciate the layer (this) before the convert, we can pass
             // style properties (@link StyleOptions) using options.style.
@@ -852,6 +983,17 @@ export default {
             const features = collection.features;
             if (!features || features.length == 0) { return; }
 
+            // Pass the tile-specific material and tileMesh to each feature
+            // const meshes = features.map((feature) => {
+            //     const featureOptions = {
+            //         ...options,
+            //         // polygonMaterial: tilePolygonMaterial, // Use THIS tile's material
+            //         tileMesh
+            //     };
+            //     const mesh = featureToMesh(feature, featureOptions);
+            //     mesh.layer = this;
+            //     return mesh;
+            // });
             const meshes = features.map((feature) => {
                 options.tileMesh = tileMesh;
                 const mesh = featureToMesh(feature, options);
